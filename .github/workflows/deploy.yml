@@ -19,13 +19,16 @@ jobs:
 
       - name: Deploy via SSH
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          # Add other secrets as needed
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
         run: |
           ssh root@168.231.114.46 "
             cd /var/www/annhurst-ts &&
             git pull origin main &&
+            echo 'NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}' > .env &&
+            echo 'NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}' >> .env &&
+            echo 'NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}' >> .env &&
             npm install &&
             npm run build &&
             pm2 restart annhurst-ts || pm2 start npm --name 'annhurst-ts' -- start

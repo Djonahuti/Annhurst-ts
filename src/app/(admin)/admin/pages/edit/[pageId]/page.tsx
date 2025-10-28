@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase/client'
+// Removed Supabase; using Prisma-backed API endpoints
 import { useParams, useRouter } from 'next/navigation'
 import EditPhone from '@/components/Shared/Admin/EditPhone'
 import AccordionPage from '@/components/AccordionPage'
@@ -92,30 +92,40 @@ export default function PageEdit() {
 
   const fetchPage = async () => {
     setIsLoading(true)
-    const { data, error } = await supabase.from('pages').select('*').eq('id', id).single()
-    if (error) {
-      toast.error("Error fetching page")
-    } else if (data) {
+    try {
+      const res = await fetch(`/api/pages/${id}`)
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
       setFormData(data)
+    } catch (e) {
+      toast.error('Error fetching page')
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleSave = async () => {
-    if (id === 'new') {
-      const { error } = await supabase.from('pages').insert([formData])
-      if (error) toast.error("Error creating page")
-      else {
-        toast.success("Page created successfully")
-        router.push('/admin/pages')
+    try {
+      if (id === 'new') {
+        const res = await fetch('/api/pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        })
+        if (!res.ok) throw new Error(await res.text())
+        toast.success('Page created successfully')
+      } else {
+        const res = await fetch(`/api/pages/${id}` , {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        })
+        if (!res.ok) throw new Error(await res.text())
+        toast.success('Page updated successfully')
       }
-    } else {
-      const { error } = await supabase.from('pages').update(formData).eq('id', id)
-      if (error) toast.error("Error updating page")
-      else {
-        toast.success("Page updated successfully")
-        router.push('/admin/pages')
-      }
+      router.push('/admin/pages')
+    } catch (e) {
+      toast.error('Error saving page')
     }
   }
 

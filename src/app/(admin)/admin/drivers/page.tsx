@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState, useCallback } from "react";
-import { useSupabase } from "@/contexts/SupabaseContext";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,31 +39,6 @@ interface Driver {
   coordinator_name: string | null;
 }
 
-interface DriverQueryRow {
-  id: number;
-  name: string | null;
-  email: string | null;
-  phone: string[] | null;
-  address: string[] | null;
-  buses?: {
-    id: number;
-    bus_code: string;
-    plate_no: string;
-    coordinators?:
-      | {
-          id: number;
-          name: string;
-          email: string;
-        }
-      | {
-          id: number;
-          name: string;
-          email: string;
-        }[]
-      | null;
-  }[];
-}
-
 interface Bus {
   id: number;
   bus_code: string;
@@ -89,7 +63,6 @@ const driverSchema = z.object({
 type DriverFormValues = z.infer<typeof driverSchema>;
 
 export default function AdminDrivers() {
-  const { supabase } = useSupabase();
   const { adminRole } = useAuth();
   const router = useRouter();
   const [isAddDriverModalOpen, setAddDriverModalOpen] = useState(false);
@@ -106,114 +79,97 @@ export default function AdminDrivers() {
     defaultValues: { name: "", email: "", phone: "", address: "", bus_id: "", coordinator_id: "" },
   });
 
+  // -------------------------------------------------
+  // FETCH DATA
+  // -------------------------------------------------
   const fetchDrivers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("driver")
-      .select(`
-        id, name, email, phone, address,
-        buses:buses!buses_driver_fkey (
-          id, bus_code, plate_no,
-          coordinators:coordinators!buses_coordinator_fkey (id, name, email)
-        )
-      `);
-
-    if (error) {
-      console.error("Error fetching drivers:", error);
-      return;
+    try {
+      const res = await fetch('/api/drivers');
+      if (!res.ok) throw new Error('Failed to fetch drivers');
+      const data = await res.json();
+      setDrivers(sortDrivers(data, sortBy));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-
-    const rows: DriverQueryRow[] = (data ?? []) as unknown as DriverQueryRow[];
-    const formatted = rows.map((d) => {
-      const firstBus = d.buses?.[0];
-      const coordinators = firstBus?.coordinators;
-      const coordinator = Array.isArray(coordinators)
-        ? coordinators[0] ?? null
-        : coordinators ?? null;
-      return {
-        id: d.id,
-        name: d.name,
-        email: d.email,
-        phone: d.phone,
-        address: d.address,
-        bus_id: firstBus?.id ?? null,
-        bus_code: firstBus?.bus_code ?? null,
-        plate_no: firstBus?.plate_no ?? null,
-        coordinator_id: coordinator?.id ?? null,
-        coordinator_name: coordinator?.name ?? null,
-      };
-    });
-
-    setDrivers(sortDrivers(formatted, sortBy));
-    setLoading(false);
-  }, [supabase, sortBy]);
+  }, [sortBy]);
 
   const fetchBuses = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("buses")
-      .select("id, bus_code, plate_no, driver, coordinator");
-    if (error) console.error("Error fetching buses:", error);
-    setBuses(data || []);
-  }, [supabase]);
+    try {
+      const res = await fetch('/api/buses?unassigned=true');
+      if (res.ok) setBuses(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   const fetchCoordinators = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("coordinators")
-      .select("id, name, email");
-    if (error) console.error("Error fetching coordinators:", error);
-    setCoordinators(data || []);
-  }, [supabase]);
+    try {
+      const res = await fetch('/api/coordinators');
+      if (res.ok) setCoordinators(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDrivers();
     fetchBuses();
     fetchCoordinators();
-  }, [router, fetchDrivers, fetchBuses, fetchCoordinators]);
+  }, [fetchDrivers, fetchBuses, fetchCoordinators, router]);
 
+  // -------------------------------------------------
+  // EDIT HANDLER
+  // -------------------------------------------------
   const handleEdit = (driver: Driver) => {
     setEditingDriver(driver);
     form.reset({
-      name: driver.name || "",
-      email: driver.email || "",
-      phone: driver.phone?.[0] || "",
-      address: driver.address?.[0] || "",
-      bus_id: driver.bus_id ? String(driver.bus_id) : "",
-      coordinator_id: driver.coordinator_id ? String(driver.coordinator_id) : "",
+      name: driver.name || '',
+      email: driver.email || '',
+      phone: driver.phone?.[0] || '',
+      address: driver.address?.[0] || '',
+      bus_id: driver.bus_id ? String(driver.bus_id) : '',
+      coordinator_id: driver.coordinator_id ? String(driver.coordinator_id) : '',
     });
   };
 
   const onSubmit = async (values: DriverFormValues) => {
     if (!editingDriver) return;
 
-    // update driver info
-    await supabase.from("driver").update({
+    const payload = {
       name: values.name,
       email: values.email,
-      phone: values.phone ? [values.phone] : null,
-      address: values.address ? [values.address] : null,
-    }).eq("id", editingDriver.id);
+      phone: values.phone,
+      address: values.address,
+      bus_id: values.bus_id === 'N/A' ? null : values.bus_id,
+      coordinator_id:
+        values.coordinator_id === 'N/A' ? null : values.coordinator_id,
+    };
 
-    // clear any previous bus assignment
-    await supabase.from("buses").update({ driver: null }).eq("driver", editingDriver.id);
+    try {
+      const res = await fetch(`/api/drivers/${editingDriver.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (values.bus_id) {
-      await supabase
-        .from("buses")
-        .update({
-          driver: editingDriver.id,
-          coordinator: values.coordinator_id ? Number(values.coordinator_id) : null,
-        })
-        .eq("id", values.bus_id);
+      if (!res.ok) throw new Error('Update failed');
+
+      setEditingDriver(null);
+      fetchDrivers(); // refresh list
+    } catch (e) {
+      console.error(e);
+      // you could toast here
     }
-
-    setEditingDriver(null);
-    fetchDrivers();
-    fetchBuses();
   };
 
-  // sorting
-  const sortDrivers = (list: Driver[], key: "bus" | "driver") => {
+  // -------------------------------------------------
+  // SORTING
+  // -------------------------------------------------
+  const sortDrivers = (list: Driver[], key: 'bus' | 'driver') => {
     const sorted = [...list];
-    if (key === "bus") {
+    if (key === 'bus') {
       sorted.sort((a, b) => {
         if (!a.bus_code && !b.bus_code) return 0;
         if (!a.bus_code) return 1;
@@ -225,17 +181,20 @@ export default function AdminDrivers() {
         if (!a.name && !b.name) return 0;
         if (!a.name) return 1;
         if (!b.name) return -1;
-        return a.name.localeCompare(b.name);
+        return (a.name ?? '').localeCompare(b.name ?? '');
       });
     }
     return sorted;
   };
 
-  const handleSortChange = (key: "bus" | "driver") => {
+  const handleSortChange = (key: 'bus' | 'driver') => {
     setSortBy(key);
     setDrivers(sortDrivers(drivers, key));
   };
 
+  // -------------------------------------------------
+  // UI
+  // -------------------------------------------------
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Calendar, Edit, Eye, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase/client'
+// Removed Supabase; using internal API endpoints (Prisma-backed)
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Page {
@@ -33,34 +33,41 @@ export default function AdminPages() {
 
   const fetchPages = async () => {
     setIsLoading(true)
-    const { data, error } = await supabase.from('pages').select('*').order('created_at', { ascending: false })
-    if (error) {
-      toast.error("Failed to fetch pages")
-    } else {
+    try {
+      const res = await fetch('/api/pages')
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
       setPages(data || [])
+    } catch (e) {
+      toast.error('Failed to fetch pages')
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleDeletePage = async (id: string) => {
-    const { error } = await supabase.from('pages').delete().eq('id', id)
-    if (error) {
-      toast.error("Error deleting page")
-    } else {
+    try {
+      const res = await fetch(`/api/pages/${id}` , { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
       setPages(prev => prev.filter(p => p.id !== id))
-      toast.success("Page deleted successfully")
+      toast.success('Page deleted successfully')
+    } catch {
+      toast.error('Error deleting page')
     }
   }
 
   const handleTogglePublish = async (id: string, status: boolean) => {
-    const { error } = await supabase.from('pages').update({ is_published: !status }).eq('id', id)
-    if (error) {
-      toast.error("Error updating publish status")
-    } else {
-      setPages(prev =>
-        prev.map(p => (p.id === id ? { ...p, is_published: !status } : p))
-      )
-      toast.success("Publish status updated")
+    try {
+      const res = await fetch(`/api/pages/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: !status })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setPages(prev => prev.map(p => (p.id === id ? { ...p, is_published: !status } : p)))
+      toast.success('Publish status updated')
+    } catch {
+      toast.error('Error updating publish status')
     }
   }
 

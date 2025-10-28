@@ -31,7 +31,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/AuthContext"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Badge } from "../ui/badge"
@@ -124,37 +123,40 @@ export function PopRight() {
     const fetchProfile = async () => {
       if (!user) return
 
-      let tableName = ""
-      if (role === "admin") tableName = "admins"
-      else if (role === "coordinator") tableName = "coordinators"
-      else if (role === "driver") tableName = "driver"
+      try {
+        let response;
+        if (role === "admin") {
+          response = await fetch(`/api/admins?email=${encodeURIComponent(user.email || '')}`);
+        } else if (role === "coordinator") {
+          response = await fetch(`/api/coordinators?email=${encodeURIComponent(user.email || '')}`);
+        } else if (role === "driver") {
+          response = await fetch(`/api/drivers?email=${encodeURIComponent(user.email || '')}`);
+        }
 
-      if (!tableName) return
-
-      const { data, error } = await supabase
-        .from(tableName)
-        .select("*")
-        .eq("email", user.email)
-        .single()
-
-      if (error) {
-        console.error(`Error fetching ${role} data:`, error.message)
-      } else {
-        setProfile(data)
+        if (response && response.ok) {
+          const data = await response.json();
+          setProfile(data);
+        }
+      } catch (error) {
+        console.error(`Error fetching ${role} data:`, error);
       }
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchProfile()
-  }, [user, role])
+    fetchProfile();
+  }, [user, role]);
 
   React.useEffect(() => {
     const fetchCounts = async () => {
-      const { count: unreadCount } = await supabase
-        .from('contact')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_read', false);
-      setUnreadCount(unreadCount || 0);
+      try {
+        const response = await fetch('/api/contacts?is_read=false');
+        if (response.ok) {
+          const contacts = await response.json();
+          setUnreadCount(contacts.length);
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
     };
   
     fetchCounts();
@@ -173,8 +175,9 @@ export function PopRight() {
   } 
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
+    // Use NextAuth signOut instead of Supabase
+    const { signOut } = useAuth();
+    await signOut();
   }
 
   return (
@@ -185,7 +188,7 @@ export function PopRight() {
       <Avatar className="h-8 w-8 rounded-full">
         {profile.avatar ? (
         <AvatarImage
-         src={`https://uffkwmtehzuoivkqtefg.supabase.co/storage/v1/object/public/receipts/${profile.avatar}`}
+         src={`/uploads/${profile.avatar}`}
          alt={profile.name}
          className="rounded-full" 
          />

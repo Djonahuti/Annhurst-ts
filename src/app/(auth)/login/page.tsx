@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,6 +9,7 @@ import LogoSwitcher from '@/components/LogoSwitcher';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { PrismaClient } from '@prisma/client';
 
 type Settings = {
   logo?: string;
@@ -19,6 +19,8 @@ type Settings = {
   email?: string[];
   phone?: string[];
 };
+
+const prisma = new PrismaClient();
 
 export default function Login() {
   const { signIn } = useAuth()  
@@ -32,12 +34,30 @@ export default function Login() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase.from("settings").select("*").single();
-      if (!error) setSettings(data);
+      try {
+        // Fetch from API route to avoid using prisma on the client
+        const response = await fetch('/api/settings');
+        if (!response.ok) {
+          throw new Error('Failed to load settings');
+        }
+        const data = await response.json();
+        if (data) {
+          setSettings({
+            ...data,
+            logo_blk: data.logo_blk ? `/uploads/${data.logo_blk.split('/').pop()}` : undefined,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+        }
     };
     fetchSettings();
-  }, []);  
+    return () => {
+      prisma.$disconnect();
+    };
+  }, []);
 
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)

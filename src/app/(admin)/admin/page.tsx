@@ -14,7 +14,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useSupabase } from '@/contexts/SupabaseContext';
 
 interface DashboardStats {
   totalPages: number
@@ -24,8 +23,16 @@ interface DashboardStats {
   totalBuses?: number
 }
 
+interface Page {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  lastModified: string;
+  views: number;
+}
+
 export default function AdminDashboard() {
-  const { supabase } = useSupabase();
   const [stats, setStats] = useState<DashboardStats>({
     totalPages: 0,
     publishedPages: 0,
@@ -33,66 +40,29 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     totalBuses: 0
   })
-  const [recentPages, setRecentPages] = useState<Array<{
-    id: string;
-    title: string;
-    slug: string;
-    status: string;
-    lastModified: string;
-    views: number;
-  }>>([])
+  const [recentPages, setRecentPages] = useState<Page[]>([]);
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchStats = async () => {
       setIsLoading(true);
-      // Fetch total pages and published pages
-      const { data: pages } = await supabase
-        .from('pages')
-        .select('id, is_published, updated_at, title, slug')
-        .order('updated_at', { ascending: false });
-      // Fetch total users
-      const { data: users } = await supabase
-        .from('users')
-        .select('id');
-      // Fetch total revenue (sum of payment.amount)
-      const { data: revenueData } = await supabase
-        .from('payment')
-        .select('amount');
-      // Fetch total buses
-      const { data: buses } = await supabase
-        .from('buses')
-        .select('id');
-
-      let totalRevenue = 0;
-      if (revenueData && Array.isArray(revenueData)) {
-        totalRevenue = revenueData.reduce((sum, p) => sum + (p.amount || 0), 0);
+      try {
+        const res = await fetch('/api/admin/stats');
+        const data = await res.json();
+        if (res.ok) {
+          setStats(data.stats);
+          setRecentPages(data.recentPages);
+        } else {
+          console.error('Error fetching stats:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setStats({
-        totalPages: pages ? pages.length : 0,
-        publishedPages: pages ? pages.filter((p) => p.is_published).length : 0,
-        totalUsers: users ? users.length : 0,
-        totalBuses: buses ? buses.length : 0,
-        totalRevenue,
-      });
-
-      setRecentPages(
-        (pages || [])
-          .slice(0, 3)
-          .map((p) => ({
-            id: p.id,
-            title: p.title,
-            slug: p.slug,
-            status: p.is_published ? 'published' : 'draft',
-            lastModified: p.updated_at ? p.updated_at.split('T')[0] : '',
-            views: 0 // No views column in schema
-          }))
-      );
-      setIsLoading(false);
     };
     fetchStats();
-  }, [supabase]);
+  }, []);
 
   if (isLoading) {
     return (

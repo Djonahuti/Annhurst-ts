@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from './ThemeToggle'
-import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoSwitcher from './LogoSwitcher';
@@ -31,8 +30,17 @@ export default function Navbar() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase.from("settings").select("*").single();
-      if (!error) setSettings(data);
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (res.ok) {
+          setSettings(data);
+        } else {
+          console.error('Error fetching settings:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
     };
     fetchSettings();
   }, []);

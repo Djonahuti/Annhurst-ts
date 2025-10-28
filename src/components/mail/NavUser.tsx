@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
 import Link from "next/link";
-import { supabase } from "@/lib/supabase/client"
+// Removed Supabase usage
 import { useAuth } from "@/contexts/AuthContext"
 
 type UserData = {
@@ -58,16 +58,11 @@ export function NavUser() {
 
       if (!tableName) return
 
-      const { data, error } = await supabase
-        .from(tableName)
-        .select("*")
-        .eq("email", user.email)
-        .single()
-
-      if (error) {
-        console.error(`Error fetching ${role} data:`, error.message)
-      } else {
-        setProfile(data)
+      const res = await fetch(`/api/${tableName}?email=${encodeURIComponent(user.email)}`)
+      if (res.ok) {
+        const list = await res.json()
+        const row = Array.isArray(list) ? list[0] : list
+        setProfile(row)
       }
       setLoading(false)
     }
@@ -88,8 +83,8 @@ export function NavUser() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
+    // Use AuthContext's signOut (NextAuth)
+    window.location.href = "/api/auth/signout?callbackUrl=/login"
   }
 
   return (
@@ -104,7 +99,7 @@ export function NavUser() {
               <Avatar className="h-8 w-8 rounded-full">
                 {profile.avatar ? (
                 <AvatarImage
-                 src={`https://uffkwmtehzuoivkqtefg.supabase.co/storage/v1/object/public/receipts/${profile.avatar}`}
+                 src={profile.avatar.startsWith('http') ? profile.avatar : `/receipts/${profile.avatar}`}
                  alt={profile.name} />
                 ):(
                   <AvatarFallback className="rounded-full">{profile.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
@@ -128,7 +123,7 @@ export function NavUser() {
               <Avatar className="h-8 w-8 rounded-full grayscale">
                 {profile.avatar ? (
                 <AvatarImage
-                 src={`https://uffkwmtehzuoivkqtefg.supabase.co/storage/v1/object/public/receipts/${profile.avatar}`} 
+                 src={profile.avatar.startsWith('http') ? profile.avatar : `/receipts/${profile.avatar}`} 
                  alt={profile.name} />
                 ):(
                   <AvatarFallback className="rounded-full">{profile.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>

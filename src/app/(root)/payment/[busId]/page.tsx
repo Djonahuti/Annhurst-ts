@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSupabase } from "@/contexts/SupabaseContext";
 
 import {
   Card,
@@ -49,7 +48,6 @@ type PaymentFormValues = z.infer<typeof paymentSchema>;
 export default function PaymentForm() {
   const { busId } = useParams<{ busId: string }>();
   const { user, role } = useAuth();
-  const { supabase } = useSupabase();
   const router = useRouter();
   const [busCode, setBusCode] = useState<string>("");  
 
@@ -79,12 +77,23 @@ export default function PaymentForm() {
     }
     // fetch bus_code
     const fetchBusCode = async () => {
-      const { data } = await supabase.from("buses").select("bus_code").eq("id", busId).single();
-      setBusCode(data?.bus_code || `BUS${busId}`);
-      form.setValue("bus", Number(busId)); // still keep the id for DB insert
+      try {
+        const res = await fetch(`/api/buses/${busId}`);
+        const data = await res.json();
+        if (res.ok) {
+          setBusCode(data.bus_code || `BUS${busId}`);
+          form.setValue("bus", Number(busId)); // Keep the id for DB insert
+        } else {
+          console.error('Error fetching bus:', data.error);
+          setBusCode(`BUS${busId}`);
+        }
+      } catch (error) {
+        console.error('Error fetching bus code:', error);
+        setBusCode(`BUS${busId}`);
+      }
     };
     fetchBusCode();
-  }, [user, role, supabase, busId]);
+  }, [user, role, busId, form]);
 
   const onSubmit = async (values: PaymentFormValues) => {
     const file = values.receipt?.[0];
@@ -98,49 +107,44 @@ export default function PaymentForm() {
     const formattedDate = values.payment_date.split("-").reverse().join(".");
     const newFileName = `${busCode},N${values.amount},${formattedDate},DR Receipt.${ext}`;
 
-    let uploadSuccess = false;
-    // Use local storage in development, Supabase Storage in production
-    if (process.env.NODE_ENV === "development") {
-      // Upload to local API route
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("filename", newFileName);
+    // Upload to /api/upload-receipt
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("filename", newFileName);
 
+    try {
       const uploadRes = await fetch("/api/upload-receipt", {
         method: "POST",
         body: formData,
       });
-      uploadSuccess = uploadRes.ok;
-    } else {
-      // Upload to Supabase Storage bucket "receipts"
-      const { error: uploadError } = await supabase.storage
-        .from("receipts")
-        .upload(newFileName, file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-      uploadSuccess = !uploadError;
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json();
+        alert(`Failed to upload receipt: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+
+      // Insert payment record via API
+      const paymentRes = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...values,
+          receipt: newFileName,
+        }),
+      });
+
+      if (!paymentRes.ok) {
+        const errorData = await paymentRes.json();
+        alert(`Failed to submit payment: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+
+      router.push(`/payment/${busId}/history`);
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      alert("An unexpected error occurred while submitting the payment.");
     }
-
-    if (!uploadSuccess) {
-      alert("Failed to upload receipt");
-      return;
-    }
-
-    // Insert payment record (store only filename)
-    const { error: insertError } = await supabase.from("payment").insert([
-      {
-        ...values,
-        receipt: newFileName,
-      },
-    ]);
-
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return;
-    }
-
-    router.push(`/payment/${busId}/history`);
   };
 
   return (

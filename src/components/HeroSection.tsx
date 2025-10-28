@@ -5,7 +5,6 @@ import { Progress } from "@/components/ui/progress"
 import { Star, Smile } from "lucide-react"
 import Link from 'next/link';
 import { Button } from "./ui/button"
-import { supabase } from "@/lib/supabase/client"
 import { useEffect, useState } from "react"
 
 interface Page {
@@ -67,25 +66,24 @@ export default function HeroSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchPage()
-  }, [])
-
-  const fetchPage = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', 'home')
-      .eq('is_published', true)
-      .single()
-
-    if (error) {
-      console.error('Error fetching page:', error.message)
-    } else {
-      setPage(data)
-    }
-    setLoading(false)
-  }
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pages/home');
+        const data = await res.json();
+        if (res.ok) {
+          setPage(data);
+        } else {
+          console.error('Error fetching page:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching home page:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, []);
 
   if (loading) {
     return (

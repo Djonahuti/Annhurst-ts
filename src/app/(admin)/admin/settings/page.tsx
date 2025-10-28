@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { Phone, Mail, MapPin } from 'lucide-react'
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,20 +25,33 @@ interface SettingsData {
 
 export default function Settings() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Failed to load settings');
+        const data = await res.json();
+        setSettings(data);
+      } catch (err) {
+        toast.error('Error loading settings');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
-    const { data, error } = await supabase.from("settings").select("*").single();
-    if (error) {
-      toast.error("Error fetching settings");
-    } else {
-      setSettings(data);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (!settings) {
     return (
@@ -60,7 +72,7 @@ export default function Settings() {
               <div className="flex justify-between items-center space-x-2">
                 <p className="font-medium text-lg text-gray-900">Main Logo:</p>
                 <Image
-                 src={supabase.storage.from("receipts").getPublicUrl(settings.logo).data.publicUrl} 
+                 src={`/settings/${settings.logo}`} 
                  alt="Logo" 
                  className="h-20 w-auto"
                   width={256}
@@ -81,7 +93,7 @@ export default function Settings() {
                       <div className="w-25 h-25 rounded-lg flex items-center justify-center">
                         {settings.logo_blk && (
                           <Image
-                            src={supabase.storage.from("receipts").getPublicUrl(settings.logo_blk).data.publicUrl}
+                            src={`/settings/${settings.logo_blk}`}
                             alt="Annhurst Transport"
                             className="h-20 w-auto"
                             width={256}

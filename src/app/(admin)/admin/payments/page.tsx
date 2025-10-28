@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSupabase } from '@/contexts/SupabaseContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,50 +8,116 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext'
 
 interface Payment {
-  id: number
-  amount: number | null
-  pay_type: string | null
-  pay_complete: string | null   // ✅ text now
-  bus: { bus_code: string | null, plate_no: string | null, e_payment: number | null } | null
-  coordinator: string | null
-  created_at: string
+  id: number;
+  amount: number | null;
+  pay_type: string | null;
+  pay_complete: string | null;
+  bus: {
+    id: number;
+    bus_code: string;
+    plate_no: string;
+    e_payment: number | null;  // ← allow null
+  } | null;
+  coordinator: string | null;
+  created_at: string;
 }
 
 export default function ViewPayments() {
-  const { supabase } = useSupabase()
   const { adminRole } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([])
   const canEdit = adminRole === 'admin' || adminRole === 'editor';
   const [loading, setLoading] = useState(true)
 
+  // -------------------------------------------------
+  // FETCH PAYMENTS
+  // -------------------------------------------------
   useEffect(() => {
     const fetchPayments = async () => {
-      const { data, error } = await supabase
-        .from('payment')
-        .select(`
-          id,
-          amount,
-          pay_type,
-          pay_complete,
-          created_at,
-          coordinator,
-          bus:buses(bus_code, plate_no, e_payment)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (!error && data) {
-        setPayments(
-          (data as Array<Omit<Payment, 'bus'> & { bus: Payment['bus'] | Payment['bus'][] }> ).map((p) => ({
-            ...p,
-            bus: Array.isArray(p.bus) ? (p.bus.length > 0 ? p.bus[0] : null) : p.bus
-          }))
-        )
+      try {
+        const res = await fetch('/api/payments');
+        if (!res.ok) throw new Error('Failed to fetch payments');
+        const data = await res.json();
+        setPayments(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false)
-    }
+    };
+    fetchPayments();
+  }, []);
 
-    fetchPayments()
-  }, [supabase])
+  // -------------------------------------------------
+  // UPDATE EXPECTED PAYMENT
+  // -------------------------------------------------
+  const updateExpectedPayment = async (busId: number | null, value: number) => {
+    if (!busId) return;
+    try {
+      await fetch(`/api/buses/${busId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ e_payment: value }),
+      });
+      // Optimistically update UI
+      setPayments((prev) =>
+        prev.map((p) =>
+          p.bus?.id === busId
+            ? { ...p, bus: { ...p.bus!, e_payment: value } }
+            : p
+        )
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // -------------------------------------------------
+  // UPDATE PAYMENT STATUS
+  // -------------------------------------------------
+  const updatePaymentStatus = async (paymentId: number, status: string) => {
+    try {
+      await fetch(`/api/payments/${paymentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pay_complete: status }),
+      });
+      // Optimistically update UI
+      setPayments((prev) =>
+        prev.map((p) => (p.id === paymentId ? { ...p, pay_complete: status } : p))
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // -------------------------------------------------
+  // UI
+  // -------------------------------------------------
+  if (loading) {
+    return (
+      <Card className="max-w-5xl mx-auto bg-white dark:bg-gray-900">
+        <CardHeader>
+          <CardTitle>Payments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (payments.length === 0) {
+    return (
+      <Card className="max-w-5xl mx-auto bg-white dark:bg-gray-900">
+        <CardHeader>
+          <CardTitle>Payments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>No payments found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="max-w-5xl mx-auto bg-white dark:bg-gray-900">
@@ -90,13 +155,12 @@ export default function ViewPayments() {
                     <Input
                       type="number"
                       disabled={!canEdit}
-                      defaultValue={p.bus?.e_payment || 0}
-                      onBlur={async (e) => {
-                        const value = Number(e.target.value);
-                        await supabase
-                          .from("buses")
-                          .update({ e_payment: value })
-                          .eq("bus_code", p.bus?.bus_code);
+                      defaultValue={p.bus?.e_payment ?? 0}
+                      onBlur={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val) && p.bus?.id != null) {
+                          updateExpectedPayment(p.bus.id, val);
+                        }
                       }}
                       className="border rounded px-2 py-1 w-24"
                     />
@@ -109,13 +173,8 @@ export default function ViewPayments() {
                   <TableCell>
                    {adminRole !== "viewer" ? ( 
                     <Select
-                      defaultValue={p.pay_complete || 'Pending'}
-                      onValueChange={async (status) => {
-                        await supabase
-                          .from('payment')
-                          .update({ pay_complete: status })
-                          .eq('id', p.id)
-                      }}
+                    defaultValue={p.pay_complete || 'Pending'}
+                    onValueChange={(status) => updatePaymentStatus(p.id, status)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={p.pay_complete} />

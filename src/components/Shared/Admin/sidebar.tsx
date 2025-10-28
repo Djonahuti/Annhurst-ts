@@ -1,7 +1,6 @@
 'use client'
 import LogoSwitcher from "@/components/LogoSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { supabase } from "@/lib/supabase/client";
 import { Bus, Coins, Contact, FileText, Home, Mail, Settings, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,12 +18,12 @@ const navigation = [
   ]
 
   type Settings = {
-    logo?: string;
-    logo_blk?: string;
-    footer_write?: string;
-    footer_head?: string;
-    email?: string[];
-    phone?: string[];
+    logo?: string | null;
+    logo_blk?: string | null;
+    footer_write?: string | null;
+    footer_head?: string | null;
+    email?: string[] | null;
+    phone?: string[] | null;
   };
 
   type SidebarProps = {
@@ -38,8 +37,17 @@ export default function AdminSidebar({ sidebarOpen, setSidebarOpen }: SidebarPro
   
     useEffect(() => {
       const fetchSettings = async () => {
-        const { data, error } = await supabase.from("settings").select("*").single();
-        if (!error) setSettings(data);
+        try {
+          const res = await fetch('/api/settings');
+          const data = await res.json();
+          if (res.ok) {
+            setSettings(data);
+          } else {
+            console.error('Error fetching settings:', data.error);
+          }
+        } catch (error) {
+          console.error('Error fetching settings:', error);
+        }
       };
       fetchSettings();
     }, []);
@@ -52,8 +60,6 @@ export default function AdminSidebar({ sidebarOpen, setSidebarOpen }: SidebarPro
         </div>
       );
     }
-  
-    const settingsContent: Settings = settings || {};
 
 return (
     <div>
@@ -64,18 +70,16 @@ return (
           <div className="flex h-16 items-center justify-between px-6 border-b">
             <div className="flex items-center space-x-2">
               <Link href="/" className="-m-1.5 p-1.5 flex items-center space-x-2">
-              {(settingsContent.logo || settingsContent.logo_blk) && (
-            <>
-              <LogoSwitcher
-                logo={settingsContent.logo}
-                logo_blk={settingsContent.logo_blk}
-                width={256}
-                height={64}
-                alt="Annhurst Logo"
-                className="h-10 w-auto"
-              />
-            </>
-          )}
+              {(settings.logo || settings.logo_blk) && (
+                  <LogoSwitcher
+                    logo={settings.logo}
+                    logo_blk={settings.logo_blk}
+                    width={256}
+                    height={64}
+                    alt="Annhurst Logo"
+                    className="h-10 w-auto"
+                  />
+                )}
               </Link>
             </div>
             <button
@@ -118,18 +122,16 @@ return (
           <div className="flex h-16 items-center">
             <div className="flex items-center space-x-2">
               <Link href="/" className="-m-1.5 p-1.5 flex items-center space-x-2">
-              {(settingsContent.logo || settingsContent.logo_blk) && (
-            <>
-              <LogoSwitcher
-                logo={settingsContent.logo}
-                logo_blk={settingsContent.logo_blk}
-                width={256}
-                height={64}
-                alt="Annhurst Logo"
-                className="h-10 w-auto"
-              />
-            </>
-          )}
+              {(settings.logo || settings.logo_blk) && (
+                  <LogoSwitcher
+                    logo={settings.logo}
+                    logo_blk={settings.logo_blk}
+                    width={256}
+                    height={64}
+                    alt="Annhurst Logo"
+                    className="h-10 w-auto"
+                  />
+                )}
               </Link>
             </div>
           </div>

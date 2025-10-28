@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import Link from "next/link";
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
-import { useSupabase } from '@/contexts/SupabaseContext'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import Modal from '@/components/Modal'
@@ -38,24 +37,6 @@ interface Bus {
   coordinator_email: string | null
   coordinator_phone: string[]
   coordinator_id?: number | null
-}
-
-interface SupabaseBus {
-  id: number;
-  bus_code: string | null;
-  plate_no: string | null;
-  contract_date: string | null;
-  start_date: string | null;
-  date_collected: string | null;
-  agreed_date: string | null;
-  t_income: string | null;
-  initial_owe: string | null;
-  coordinator?: {
-    id?: number | string | null;
-    name?: string | null;
-    email?: string | null;
-    phone?: string[];
-  };
 }
 
 interface Payment {
@@ -95,7 +76,6 @@ const calculateAmountLeft = (initialOwe: string | null, tIncome: string | null):
 
 export default function DriverProfile() {
   const { user, role, loading: authLoading, signOut } = useAuth()
-  const { supabase } = useSupabase()
   const router = useRouter();
 
   const [driver, setDriver] = useState<Driver | null>(null)
@@ -116,87 +96,64 @@ export default function DriverProfile() {
         return // Wait for auth to finish loading
       }
 
-      // Fetch driver info
-      const { data: driverData, error } = await supabase
-        .from('driver')
-        .select('*')
-        .eq('email', user!.email)
-        .single()
+      try {
+        // Fetch driver info
+        const driverRes = await fetch(`/api/drivers?email=${encodeURIComponent(user!.email)}`);
+        const driverData = await driverRes.json();
+        if (!driverRes.ok) {
+          alert(`Failed to fetch driver data: ${driverData.error || 'Unknown error'}`);
+          return router.push('/login');
+        }
+        setDriver(driverData);
 
-      if (error || !driverData) {
-        alert('Failed to fetch driver data')
-        return router.push('/login')
+        // Fetch buses assigned to driver
+        const busesRes = await fetch(`/api/buses?driverId=${driverData.id}`);
+        const busesData = await busesRes.json();
+        if (busesRes.ok) {
+          setBuses(busesData);
+        } else {
+          alert(`Failed to fetch bus data: ${busesData.error || 'Unknown error'}`);
+        }
+        setBusLoading(false);
+      } catch (error) {
+        console.error('Error fetching driver data:', error);
+        alert('An unexpected error occurred while fetching driver data.');
+        router.push('/login');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setDriver(driverData as Driver)
-
-      // Fetch buses assigned to driver
-      const { data: busData, error: busError } = await supabase
-        .from('buses')
-        .select(`
-          id,
-          bus_code,
-          plate_no,
-          contract_date,
-          start_date,
-          date_collected,
-          agreed_date,
-          t_income,
-          initial_owe,
-          coordinator:coordinators!buses_coordinator_fkey(name, email, phone)
-        `)
-        .eq('driver', driverData.id)
-
-      if (busError) {
-        alert('Failed to fetch bus data')
-      } else {
-        const formattedBuses = (busData as SupabaseBus[]).map((bus) => ({
-          id: bus.id,
-          bus_code: bus.bus_code,
-          plate_no: bus.plate_no,
-          contract_date: bus.contract_date,
-          start_date: bus.start_date,
-          date_collected: bus.date_collected,
-          agreed_date: bus.agreed_date,
-          t_income: bus.t_income,
-          initial_owe: bus.initial_owe,
-          coordinator_name: bus.coordinator?.name || 'N/A',
-          coordinator_email: bus.coordinator?.email || 'N/A',
-          coordinator_phone: bus.coordinator?.phone || [],
-          coordinator_id: bus.coordinator && bus.coordinator.id ? (typeof bus.coordinator.id === 'string' ? parseInt(String(bus.coordinator.id), 10) : Number(bus.coordinator.id)) : null
-        }))
-        setBuses(formattedBuses)
-      }
-
-      setBusLoading(false)
-      setLoading(false)
-    }
     const fetchPayments = async () => {
-      setPaymentsLoading(true); // start loading
+      setPaymentsLoading(true);
       const busId = buses.length > 0 ? buses[0].id : null;
       if (!busId) {
         setPayments([]);
         setPaymentsLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("payment")
-        .select("*")
-        .eq("bus", busId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching payments:", error);
+      try {
+        const paymentsRes = await fetch(`/api/payments?busId=${busId}`);
+        const paymentsData = await paymentsRes.json();
+        if (paymentsRes.ok) {
+          setPayments(paymentsData);
+        } else {
+          console.error('Error fetching payments:', paymentsData.error);
+          setPayments([]);
+        }
+      } catch (error) {
+        console.error('Error fetching payments:', error);
         setPayments([]);
-      } else {
-        setPayments(data as Payment[]);
+      } finally {
+        setPaymentsLoading(false);
       }
-      setPaymentsLoading(false);
     };
 
-    fetchPayments();
-    fetchDriver()
-  }, [user, role, authLoading, supabase])
+    fetchDriver();
+    if (buses.length > 0) {
+      fetchPayments();
+    }
+  }, [user, role, authLoading, buses, router]);
 
   const handleLogout = async () => {
     await signOut()

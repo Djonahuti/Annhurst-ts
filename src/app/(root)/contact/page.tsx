@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { supabase } from '@/lib/supabase/client'
 import { Controller, useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 
@@ -100,25 +99,52 @@ export default function ContactPage() {
   })
 
   useEffect(() => {
-    fetchPage()
-  }, [])
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pages/contact');
+        const data = await res.json();
+        if (res.ok) {
+          setPage(data);
+        } else {
+          console.error('Error fetching page:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching contact page:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, []);
 
-  const fetchPage = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', 'contact')
-      .eq('is_published', true)
-      .single()
+  const onSubmit = async (data: ContactFormData) => {
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          company: data.company,
+          subject: data.subject ?? data.service,
+          message: data.message,
+        }),
+      });
 
-    if (error) {
-      console.error('Error fetching page:', error.message)
-    } else {
-      setPage(data)
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'Failed to submit message');
+      }
+
+      toast.success("Message sent successfully! We'll get back to you soon.");
+      reset();
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast.error("Something went wrong. Please try again.");
     }
-    setLoading(false)
-  }
+  };  
 
   if (loading) {
     return (
@@ -130,33 +156,6 @@ export default function ContactPage() {
 
   if (!page) {
     return <div className="p-12 text-center text-red-500">Nothing to see here.</div>
-  }
-
-  const onSubmit = async (data: ContactFormData) => {
-    try {
-      const { error } = await supabase.from("contact_us").insert([
-        {
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          company: data.company,
-          subject: data.subject ?? data.service,
-          message: data.message,
-        }
-      ])
-
-      if (error) {
-        console.error(error)
-        toast.error("Something went wrong. Please try again.")
-        return
-      }
-
-      toast.success("Message sent successfully! We'll get back to you soon.")
-      reset()
-    } catch (err) {
-      console.error(err)
-      toast.error("Unexpected error occurred.")
-    }
   }
 
   return (

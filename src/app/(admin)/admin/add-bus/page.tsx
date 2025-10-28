@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSupabase } from '@/contexts/SupabaseContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,11 +23,8 @@ interface Coordinator {
 }
 
 export default function AddBusPage() {
-  const { supabase } = useSupabase()
-
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [coordinators, setCoordinators] = useState<Coordinator[]>([])
-
   const [step, setStep] = useState(1)
 
   // form state
@@ -53,66 +49,91 @@ export default function AddBusPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: driverData } = await supabase.from('driver').select('id, name, email')
-      const { data: coordinatorData } = await supabase.from('coordinators').select('id, name, email')
+      try {
+        const [driversRes, coordinatorsRes] = await Promise.all([
+          fetch('/api/drivers'),
+          fetch('/api/coordinators'),
+        ]);
 
-      if (driverData) setDrivers(driverData)
-      if (coordinatorData) setCoordinators(coordinatorData)
-    }
-    fetchData()
-  }, [supabase])
+        if (driversRes.ok) {
+          const driverData = await driversRes.json();
+          setDrivers(driverData);
+        } else {
+          console.error('Error fetching drivers:', await driversRes.json());
+        }
+
+        if (coordinatorsRes.ok) {
+          const coordinatorData = await coordinatorsRes.json();
+          setCoordinators(coordinatorData);
+        } else {
+          console.error('Error fetching coordinators:', await coordinatorsRes.json());
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase.from('buses').insert([
-      {
-        bus_code: busCode,
-        plate_no: plateNo,
-        driver: driverId,
-        coordinator: coordinatorId,
-        letter: letterIssued,
-        e_payment: expectedPayment ? Number(expectedPayment) : null,
-        contract_date: contractDate || null,
-        agreed_date: agreedDate || null,
-        date_collected: dateCollected || null,
-        start_date: startDate || null,
-        first_pay: firstPay || null,
-        initial_owe: initialOwe ? Number(initialOwe) : null,
-        deposited: deposited ? Number(deposited) : null,
-        t_income: tIncome ? Number(tIncome) : null,
-      }
-    ])
+    try {
+      const res = await fetch('/api/buses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bus_code: busCode,
+          plate_no: plateNo,
+          driver: driverId || null,
+          coordinator: coordinatorId || null,
+          letter: letterIssued,
+          e_payment: expectedPayment || null,
+          contract_date: contractDate || null,
+          agreed_date: agreedDate || null,
+          date_collected: dateCollected || null,
+          start_date: startDate || null,
+          first_pay: firstPay || null,
+          initial_owe: initialOwe || null,
+          deposited: deposited || null,
+          t_income: tIncome || null,
+        }),
+      });
 
-    setLoading(false)
+      setLoading(false);
 
-    if (error) {
-      toast('Error adding bus', { description: error.message, className: 'destructive' })
-    } else {
-      toast(
-        <div className='text-sm'>
+      if (res.ok) {
+        toast(
+          <div className="text-sm">
             <strong>Bus added successfully</strong>
-        </div>
-      )
-      // reset form
-      setBusCode('')
-      setPlateNo('')
-      setDriverId('')
-      setCoordinatorId('')
-      setLetterIssued(null)
-      setExpectedPayment('')
-      setContractDate('')
-      setAgreedDate('')
-      setDateCollected('')
-      setStartDate('')
-      setFirstPay('')
-      setInitialOwe('')
-      setDeposited('')
-      setTIncome('')
-      setStep(1)
+          </div>
+        );
+        // Reset form
+        setBusCode('');
+        setPlateNo('');
+        setDriverId('');
+        setCoordinatorId('');
+        setLetterIssued(null);
+        setExpectedPayment('');
+        setContractDate('');
+        setAgreedDate('');
+        setDateCollected('');
+        setStartDate('');
+        setFirstPay('');
+        setInitialOwe('');
+        setDeposited('');
+        setTIncome('');
+        setStep(1);
+      } else {
+        const errorData = await res.json();
+        toast('Error adding bus', { description: errorData.error, className: 'destructive' });
+      }
+    } catch (error) {
+      setLoading(false);
+      toast('Error adding bus', { description: 'An unexpected error occurred', className: 'destructive' });
     }
-  }
+  };
 
   const variants = {
     enter: { opacity: 0, x: 40 },

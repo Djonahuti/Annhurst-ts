@@ -2,7 +2,6 @@
 // src/pages/payment/PaymentHistory.tsx
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSupabase } from "@/contexts/SupabaseContext";
 
 import {
   Card,
@@ -52,12 +51,10 @@ export default function PaymentHistory() {
   const { busId } = useParams<{ busId: string }>();
   const [busCode, setBusCode] = useState<string>("");
   const { user, role } = useAuth();
-  const { supabase } = useSupabase();
   const router = useRouter();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [receiptsLoading, setReceiptsLoading] = useState(false);
 
   useEffect(() => {
     if (!user || (role !== "coordinator" && role !== "driver")) {
@@ -65,53 +62,41 @@ export default function PaymentHistory() {
       return;
     }
 
-  const fetchPaymentsAndReceipts = async () => {
+    const fetchPaymentsAndBusCode = async () => {
       setLoading(true);
-      setReceiptsLoading(true);
-      // Fetch bus_code from buses table
-      const { data: busData, error: busError } = await supabase
-        .from("buses")
-        .select("bus_code")
-        .eq("id", busId)
-        .single();
-      if (!busError && busData && busData.bus_code) {
-        setBusCode(busData.bus_code);
-      } else {
-        setBusCode("");
-      }
-
-      const { data, error } = await supabase
-        .from("payment")
-        .select("*")
-        .eq("bus", busId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching payments:", error);
-        setPayments([]);
-        setLoading(false);
-        setReceiptsLoading(false);
-        return;
-      }
-      setPayments(data as Payment[]);
-      setLoading(false);
-
-      // Preload Supabase public URLs for receipts
-      const urls: Record<string, string> = {};
-      for (const p of data as Payment[]) {
-        if (p.receipt) {
-          const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(p.receipt);
-          urls[p.receipt] = urlData?.publicUrl || "";
+      try {
+        // Fetch bus_code
+        const busRes = await fetch(`/api/buses/${busId}`);
+        const busData = await busRes.json();
+        if (busRes.ok) {
+          setBusCode(busData.bus_code || `BUS${busId}`);
+        } else {
+          console.error('Error fetching bus:', busData.error);
+          setBusCode(`BUS${busId}`);
         }
+
+        // Fetch payments
+        const paymentsRes = await fetch(`/api/payments?busId=${busId}`);
+        const paymentsData = await paymentsRes.json();
+        if (paymentsRes.ok) {
+          setPayments(paymentsData);
+        } else {
+          console.error('Error fetching payments:', paymentsData.error);
+          setPayments([]);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setPayments([]);
+        setBusCode(`BUS${busId}`);
+      } finally {
+        setLoading(false);
       }
-      setSupabaseUrls(urls);
-      setReceiptsLoading(false);
     };
 
-    fetchPaymentsAndReceipts();
-  }, [user, role, supabase, busId]);
+    fetchPaymentsAndBusCode();
+  }, [user, role, busId]);
 
-  if (loading || receiptsLoading) {
+  if (loading) {
     return (
       <div className="max-w-4xl mx-auto py-12">
         <Skeleton className="h-8 w-1/3 mb-6" />

@@ -1,8 +1,8 @@
+
 'use client'
 import Link from 'next/link';
 import { Phone, Mail, MapPin } from 'lucide-react'
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { IconBrandFacebook, IconBrandInstagram, IconBrandX } from '@tabler/icons-react';
 import { Avatar, AvatarImage } from './ui/avatar';
@@ -26,8 +26,17 @@ export default function Footer() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase.from("settings").select("*").single();
-      if (!error) setSettings(data);
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (res.ok) {
+          setSettings(data);
+        } else {
+          console.error('Error fetching settings:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
     };
     fetchSettings();
   }, []);
@@ -41,7 +50,7 @@ export default function Footer() {
   }
 
   const logoUrl = settings.logo_blk
-    ? supabase.storage.from("receipts").getPublicUrl(settings.logo_blk).data.publicUrl
+    ? `/uploads/${settings.logo_blk.split('/').pop()}`
     : "/logo/logo.png"; // fallback
 
 

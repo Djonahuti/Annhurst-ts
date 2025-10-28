@@ -1,5 +1,4 @@
 "use client"
-import { supabase } from '@/lib/supabase/client'
 import { Bus, Target, Eye, Users, Award, Globe } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -53,25 +52,24 @@ export default function AboutPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchPage()
-  }, [])
-
-  const fetchPage = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', 'about')
-      .eq('is_published', true)
-      .single()
-
-    if (error) {
-      console.error('Error fetching page:', error.message)
-    } else {
-      setPage(data)
-    }
-    setLoading(false)
-  }
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pages/about');
+        const data = await res.json();
+        if (res.ok) {
+          setPage(data);
+        } else {
+          console.error('Error fetching page:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching about page:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, []);
 
   if (loading) {
     return (

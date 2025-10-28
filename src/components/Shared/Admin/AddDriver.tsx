@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
@@ -85,43 +84,43 @@ export default function AddDriver() {
   const onSubmit = async (data: DriverRegisterForm) => {
     setLoading(true);
     try {
-      // 1. Create auth user
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: { data: { name: data.name } },
+      const res = await fetch('/api/drivers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          dob: data.dob,
+          nin: data.nin,
+          phones: data.phones,
+          addresses: data.addresses,
+        }),
       });
-      if (signUpError) throw signUpError;
-      if (!user) throw new Error("User not created");
-
-      // 2. Insert into driver table
-      const { error: driverError } = await supabase.from('driver').insert({
-        email: data.email,
-        password: data.password,
-        name: data.name,
-        dob: data.dob,
-        nin: data.nin,
-        phone: data.phones,
-        address: data.addresses,
-        kyc: false,
-      });
-      if (driverError) throw driverError;
-
-      // 3. Insert into users table with role 'driver'
-      const { error: userError } = await supabase.from('users').insert({
-        email: data.email,
-        name: data.name,
-        avatar: null,
-        role: 'driver',
-      });
-      if (userError) throw userError;
 
       setLoading(false);
-      toast.success('Driver Registered Successfully!')
+
+      if (res.ok) {
+        toast.success('Driver Registered Successfully!');
+        // Reset form and state
+        setPhoneInputs(['']);
+        setAddressInputs(['']);
+        setValue('name', '');
+        setValue('email', '');
+        setValue('password', '');
+        setValue('dob', '');
+        setValue('nin', '');
+        setValue('phones', ['']);
+        setValue('addresses', ['']);
+        setStep(1);
+      } else {
+        const errorData = await res.json();
+        toast.error('Registration failed', { description: errorData.error });
+      }
     } catch (err) {
       setLoading(false);
       const message = err instanceof Error ? err.message : 'Registration failed';
-      alert(message);
+      toast.error('Registration failed', { description: message });
     }
   };
 

@@ -1,14 +1,240 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+model admins {
+  id         BigInt    @id @default(autoincrement())
+  email      String    @unique
+  role       String?   @default("editor") // CHECK constraint: admin, editor, viewer
+  created_at DateTime  @default(now()) @db.Timestamptz
+  name       String?
+  avatar     String?
+  password   String?
+  banned     Boolean?
+  @@map("admins")
+}
+
+model buses {
+  id             BigInt    @id @default(autoincrement())
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  bus_code       String?
+  driver         BigInt?
+  letter         Boolean?
+  e_payment      BigInt?
+  contract_date  DateTime? @db.Date
+  agreed_date    DateTime? @db.Date
+  date_collected DateTime? @db.Date
+  start_date     DateTime? @db.Date
+  first_pay      DateTime? @db.Date
+  initial_owe    BigInt?
+  deposited      BigInt?
+  t_income       BigInt?
+  plate_no       String?
+  coordinator    BigInt?
+  driver_rel     driver?   @relation(fields: [driver], references: [id])
+  coordinator_rel coordinators? @relation(fields: [coordinator], references: [id])
+  payments       payment[]
+  @@map("buses")
+}
+
+model co_subject {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz
+  subject    String?
+  @@map("co_subject")
+}
+
+model contact {
+  id              BigInt    @id @default(autoincrement())
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  coordinator     BigInt?
+  driver          BigInt?
+  subject         BigInt?
+  transaction_date DateTime? @db.Date
+  message         String?
+  is_starred      Boolean?
+  is_read         Boolean?
+  attachment      String?
+  sender          String?
+  receiver        String?
+  sender_email    String?
+  receiver_email  String?
+  coordinator_rel coordinators? @relation(fields: [coordinator], references: [id])
+  driver_rel      driver?   @relation(fields: [driver], references: [id])
+  subject_rel     subject?  @relation(fields: [subject], references: [id])
+  @@map("contact")
+}
+
+model contact_us {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz
+  name       String?
+  email      String?
+  phone      String?
+  company    String?
+  subject    String?
+  message    String?
+  @@map("contact_us")
+}
+
+model coordinators {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz
+  email      String?
+  password   String?
+  name       String?
+  avatar     String?
+  phone      String[]
+  user_id    String?  @db.Uuid
+  banned     Boolean?
+  buses      buses[]  @relation
+  contacts   contact[] @relation
+  @@map("coordinators")
+}
+
+model driver {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz
+  email      String?
+  password   String?
+  name       String?
+  avatar     String?
+  dob        String?
+  nin        BigInt?
+  phone      String[]
+  address    String[]
+  kyc        Boolean?
+  banned     Boolean?
+  buses      buses[]  @relation
+  contacts   contact[] @relation
+  @@map("driver")
+}
+
+model pages {
+  id                     BigInt    @id @default(autoincrement())
+  title                  String
+  slug                   String    @unique
+  text                   String
+  meta_description       String?
+  is_published           Boolean?  @default(false)
+  views                  Int    @default(0)
+  created_at             DateTime  @default(now()) @db.Timestamptz
+  updated_at             DateTime  @default(now()) @db.Timestamptz
+  hero_big_black         String?
+  hero_big_primary       String?
+  hero_text              String?
+  hero_primary_button    String?
+  hero_secondary_button  String?
+  hero_year              String?
+  hero_year_span         String?
+  hero_100               String?
+  hero_100_span          String?
+  hero_24                String?
+  hero_24_span           String?
+  body_heading           String?
+  body_sub_heading       String?
+  body_first_text        String?
+  body_second_text       String?
+  body_heading2          String?
+  body_sub_heading2      String?
+  body_heading3          String?
+  body_sub_heading3      String?
+  body_heading4          String?
+  body_sub_heading4      String?
+  box_text               String?
+  box_head               String?
+  box_text2              String?
+  box_head2              String?
+  box_text3              String?
+  box_head3              String?
+  box_text4              String?
+  box_head4              String?
+  box_text5              String?
+  box_head5              String?
+  box_text6              String?
+  box_head6              String?
+  box_text7              String?
+  box_head7              String?
+  box_text8              String?
+  box_head8              String?
+  box_text9              String?
+  box_head9              String?
+  team_img               String?
+  team_text              String?
+  team_role              String?
+  team_img2              String?
+  team_text2             String?
+  team_role2             String?
+  team_img3              String?
+  team_text3             String?
+  team_role3             String?
+  section_head           String?
+  section_text           String?
+  section_primary_btn    String?
+  section_secondary_btn  String?
+  hp                     String[]
+  fm                     String[]
+  @@map("pages")
+}
+
+model payment {
+  id            BigInt    @id @default(autoincrement())
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  week          DateTime? @db.Date
+  coordinator   String?
+  bus           BigInt?
+  p_week        String?
+  receipt       String?
+  amount        BigInt?
+  sender        String?
+  payment_day   String?
+  payment_date  DateTime? @db.Date
+  pay_type      String?
+  pay_complete  String?
+  issue         String?
+  inspection    String?
+  completed_by  String?
+  bus_rel       buses?    @relation(fields: [bus], references: [id])
+  @@map("payment")
+}
+
+model settings {
+  id            BigInt   @id @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz
+  phone         String[]
+  email         String[]
+  address       String?
+  logo          String?
+  footer_write  String?
+  footer_head   String?
+  footer_head2  String?
+  services      String[]
+  bottom_left   String?
+  bottom_right  String[]
+  logo_blk      String?
+  @@map("settings")
+}
+
+model subject {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz
+  subject    String?
+  contacts   contact[] @relation
+  @@map("subject")
+}
+
+model users {
+  id         BigInt   @id @default(autoincrement())
+  email      String   @unique
+  role       String?  @default("user") // CHECK constraint: admin, user, driver
+  created_at DateTime @default(now()) @db.Timestamptz
+  name       String?
+  avatar     String?
+  @@map("users")
 }

@@ -4,7 +4,6 @@ import { Bus, Shield, Clock, Users, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import HeroSection from '@/components/HeroSection'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 
 interface Page {
   id: string
@@ -67,27 +66,26 @@ interface Page {
 export default function HomePage() {
   const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(true)
-
+  
   useEffect(() => {
-    fetchPage()
-  }, [])
-
-  const fetchPage = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', 'home')
-      .eq('is_published', true)
-      .single()
-
-    if (error) {
-      console.error('Error fetching page:', error.message)
-    } else {
-      setPage(data)
-    }
-    setLoading(false)
-  }
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pages/home');
+        const data = await res.json();
+        if (res.ok) {
+          setPage(data);
+        } else {
+          console.error('Error fetching page:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching home page:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, []);
 
   if (loading) {
     return (

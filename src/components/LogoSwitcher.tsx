@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 
@@ -31,16 +30,14 @@ export default function LogoSwitcher({
   }, []);
 
   useEffect(() => {
-    // Resolve public URLs from Supabase Storage if we have paths
+    // Construct URLs from Multer storage paths
     if (logo) {
-      const { data } = supabase.storage.from('receipts').getPublicUrl(logo);
-      setLightUrl(data.publicUrl);
+      setLightUrl(`/uploads/${logo.split('/').pop()}`);
     } else {
       setLightUrl(null);
     }
     if (logo_blk) {
-      const { data } = supabase.storage.from('receipts').getPublicUrl(logo_blk);
-      setDarkUrl(data.publicUrl);
+      setDarkUrl(`/uploads/${logo_blk.split('/').pop()}`);
     } else {
       setDarkUrl(null);
     }

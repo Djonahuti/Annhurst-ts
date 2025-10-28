@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState, useCallback } from "react";
-import { useSupabase } from "@/contexts/SupabaseContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
@@ -34,7 +33,6 @@ interface Admin {
 }
 
 export default function ViewUsers() {
-  const { supabase } = useSupabase();
   const { user, role } = useAuth();
   const { adminRole } = useAuth();
   const router = useRouter();
@@ -47,14 +45,50 @@ export default function ViewUsers() {
 
   const fetchAllUsers = useCallback(async () => {
     setLoading(true);
-    const { data: driverData } = await supabase.from("driver").select("id, name, email, phone, address, kyc, banned");
-    const { data: coordinatorData } = await supabase.from("coordinators").select("id, name, email, phone, banned");
-    const { data: adminData } = await supabase.from("admins").select("id, name, email, role, banned");
-    setDrivers(driverData || []);
-    setCoordinators(coordinatorData || []);
-    setAdmins(adminData || []);
-    setLoading(false);
-  }, [supabase]);
+    try {
+      const [driversRes, coordinatorsRes, adminsRes] = await Promise.all([
+        fetch('/api/drivers'),
+        fetch('/api/coordinators'),
+        fetch('/api/admins'),
+      ]);
+
+      const [driversJson, coordinatorsJson, adminsJson] = await Promise.all([
+        driversRes.json(),
+        coordinatorsRes.json(),
+        adminsRes.json(),
+      ]);
+
+      setDrivers((driversJson || []).map((d: any) => ({
+        id: Number(d.id),
+        name: d.name,
+        email: d.email,
+        phone: Array.isArray(d.phone) ? d.phone : (d.phone ? [d.phone] : []),
+        address: Array.isArray(d.address) ? d.address : (d.address ? [d.address] : []),
+        kyc: Boolean(d.kyc),
+        banned: Boolean(d.banned),
+      })));
+
+      setCoordinators((coordinatorsJson || []).map((c: any) => ({
+        id: Number(c.id),
+        name: c.name,
+        email: c.email,
+        phone: Array.isArray(c.phone) ? c.phone : (c.phone ? [c.phone] : []),
+        banned: Boolean(c.banned),
+      })));
+
+      setAdmins((adminsJson || []).map((a: any) => ({
+        id: Number(a.id),
+        name: a.name,
+        email: a.email,
+        role: a.role,
+        banned: Boolean(a.banned),
+      })));
+    } catch (e) {
+      console.error('Failed to fetch users:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user || role !== "admin") {
@@ -66,9 +100,19 @@ export default function ViewUsers() {
 
   const handleBanToggle = async (table: string, id: string | number, banned: boolean) => {
     setBanLoading(`${table}-${id}`);
-    await supabase.from(table).update({ banned: !banned }).eq("id", id);
-    await fetchAllUsers();
-    setBanLoading(null);
+    try {
+      const endpoint = `/api/${table}`;
+      await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, banned: !banned }),
+      });
+      await fetchAllUsers();
+    } catch (e) {
+      console.error('Failed to toggle ban:', e);
+    } finally {
+      setBanLoading(null);
+    }
   };
 
   if (loading) {

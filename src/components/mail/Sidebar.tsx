@@ -20,7 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Contact } from "@/types"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { supabase } from "@/lib/supabase/client"
+// Removed Supabase; use internal API endpoints and local assets
 import { MailContext } from "@/contexts/MailContext"
 import { NavUser } from "./NavUser"
 import { useEffect as useThemeEffect } from 'react';
@@ -129,8 +129,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   React.useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase.from("settings").select("*").single();
-      if (!error) setSettings(data);
+      const res = await fetch('/api/settings');
+      if (res.ok) setSettings(await res.json());
     };
     fetchSettings();
   }, []);  
@@ -140,62 +140,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     setSelectedMail(mail); // This now pushes it to Inbox.tsx
 
     // Mark the contact as read
-    await supabase
-      .from('contact')
-      .update({ is_read: true })
-      .eq('id', mail.id);
+    await fetch('/api/contacts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: mail.id, is_read: true })
+    });
   }
   
   React.useEffect(() => {
     const fetchContact = async () => {
-      let query =  supabase
-        .from('contact')
-        .select('*, driver(name, email, avatar), subject(subject)')
-        .order('created_at', { ascending: false }); // Optional: Order by submission date
+      const params = new URLSearchParams();
+      // server-side relations handled via include
 
       // --- Role-based visibility rules ---
       if (role === 'driver' || role === 'coordinator') {
         if (activeFilter === 'Sent') {
-          query = query.eq('sender_email', user?.email || '');
+          params.set('sender_email', user?.email || '');
         } else {
           // Default and other tabs: only messages received by the user
-          query = query.eq('receiver_email', user?.email || '');
+          params.set('receiver_email', user?.email || '');
         }
       } else if (role === 'admin') {
         if (activeFilter === 'Sent') {
           // Admin sees only own sent when on Sent
-          query = query.eq('sender_email', user?.email || '');
+          params.set('sender_email', user?.email || '');
         } else {
           // Admin sees all except their own sent in Inbox/others
-          query = query.neq('sender_email', user?.email || '');
+          params.set('exclude_sender_email', user?.email || '');
         }
       }
 
       // Additional UI filters
-      if (activeFilter === 'Starred') {
-        query = query.eq('is_starred', true);
-      } else if (activeFilter === 'Important' && role !== 'admin') {
-        query = query.eq('is_read', false);
-      }
+      if (activeFilter === 'Starred') params.set('is_starred', 'true');
+      else if (activeFilter === 'Important' && role !== 'admin') params.set('is_read', 'false');
 
       // Execute single query after all filters
-      const { data, error } = await query
+      const res = await fetch(`/api/contacts?${params.toString()}`)
       let mapped: Contact[] = []
-      if (!error && data) {
-        mapped = (data as Contact[]).map((c) => ({
-          ...c,
-          source: 'contact',
-        }))
+      if (res.ok) {
+        const data = await res.json()
+        mapped = (data as Contact[]).map((c) => ({ ...c, source: 'contact' }))
       }
 
       // Admin: optionally augment with external contact_us on Important tab
       let normalizedContacts: Contact[] = []
       if (role === 'admin' && activeFilter === 'Important') {
-        const { data: contactUs } = await supabase
-          .from('contact_us')
-          .select('*')
-          .order('created_at', { ascending: false })
-        if (contactUs) {
+        const contactUsRes = await fetch('/api/contact')
+        if (contactUsRes.ok) {
+          const contactUs = await contactUsRes.json()
           type ContactUs = {
             id: number;
             name?: string;
@@ -326,9 +318,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Choose logo based on theme
   const logoKey = theme === 'dark' ? 'logo_blk' : 'logo';
   const logoPath = settings[logoKey] || settings.logo || 'logo.png';
-  const logoUrl = logoPath
-    ? supabase.storage.from("receipts").getPublicUrl(logoPath).data.publicUrl
-    : "/logo/logo.png"; // fallback    
+  const logoUrl = logoPath || "/logo/logo.png"; // fallback    
 
   return (
     <Sidebar

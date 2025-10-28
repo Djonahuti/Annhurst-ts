@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from "react"
 import Link from "next/link";
-import { supabase } from "@/lib/supabase/client"
+// Removed Supabase; use internal API endpoint
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation";
@@ -24,16 +24,11 @@ export default function ContactUsDetail() {
 
   useEffect(() => {
     const fetchContactUs = async () => {
-      const { data, error } = await supabase
-        .from("contact_us")
-        .select("*")
-        .eq("id", id)
-        .single()
-
-      if (error) {
-        console.error("Error fetching contact_us:", error.message)
-      } else {
-        setContact(data)
+      const res = await fetch('/api/contact')
+      if (res.ok) {
+        const rows: ContactUs[] = await res.json()
+        const row = rows.find(r => String(r.id) === String(id)) || null
+        setContact(row)
       }
     }
     if (id) fetchContactUs()

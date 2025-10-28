@@ -3,7 +3,6 @@ import { Bus, Calculator, Shield, Clock, Users, TrendingUp, FileText, Headphones
 import { Button } from '@/components/ui/button'
 import Link from 'next/link';
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 
 interface Page {
   id: string
@@ -70,25 +69,24 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchPage()
-  }, [])
-
-  const fetchPage = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', 'services')
-      .eq('is_published', true)
-      .single()
-
-    if (error) {
-      console.error('Error fetching page:', error.message)
-    } else {
-      setPage(data)
-    }
-    setLoading(false)
-  }
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pages/services');
+        const data = await res.json();
+        if (res.ok) {
+          setPage(data);
+        } else {
+          console.error('Error fetching page:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching service page:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, []);
 
   if (loading) {
     return (

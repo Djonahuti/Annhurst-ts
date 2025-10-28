@@ -1,27 +1,51 @@
 import { ReactNode } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { PrismaClient } from '@prisma/client';
+
 
 type Settings = {
-  logo?: string;
-  logo_blk?: string;
-  footer_write?: string;
-  footer_head?: string;
-  email?: string[];
-  phone?: string[];
-  bottom_left?: string;
+  logo?: string | null;
+  logo_blk?: string | null;
+  footer_write?: string | null;
+  footer_head?: string | null;
+  email?: string[] | null;
+  phone?: string[] | null;
+  bottom_left?: string | null;
 };
 
+const prisma = new PrismaClient();
+
 export default async function AuthLayout({ children }: { children: ReactNode }) {
-  const supabase = await createSupabaseServerClient();
+  let settings: Settings = {};
 
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('logo, logo_blk, footer_write, footer_head, email, phone, bottom_left')
-    .single();
+  try {
+    const settingsData = await prisma.settings.findFirst({
+      select: {
+        logo: true,
+        logo_blk: true,
+        footer_write: true,
+        footer_head: true,
+        email: true,
+        phone: true,
+        bottom_left: true,
+      },
+    });
 
-    const settingsContent: Settings = settings || {};
+    settings = {
+      logo: settingsData?.logo || null,
+      logo_blk: settingsData?.logo_blk || null,
+      footer_write: settingsData?.footer_write || null,
+      footer_head: settingsData?.footer_head || null,
+      email: settingsData?.email || null,
+      phone: settingsData?.phone || null,
+      bottom_left: settingsData?.bottom_left || null,
+    };
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 bg-gradient-to-r dark:from-gray-400 dark:to-red-300">
@@ -37,11 +61,11 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         </CardFooter> 
 
       <div className="mt-6 text-center">
-      {(settingsContent) && (
-        <p className="text-xs text-gray-500">
-          © {new Date().getFullYear()} {settingsContent.bottom_left || "Company"}
-        </p>
-      )}
+        {settings.bottom_left && (
+          <p className="text-xs text-gray-500">
+            © {new Date().getFullYear()} {settings.bottom_left || "Company"}
+          </p>
+        )}
       </div>               
       </Card>
     </div>

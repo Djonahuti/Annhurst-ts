@@ -43,7 +43,15 @@ export async function GET(request: Request) {
         orderBy: { created_at: 'desc' },
       });
 
-      return NextResponse.json(payments);
+      // Serialize any BigInts to avoid JSON issues
+      return NextResponse.json(
+        payments.map((p) => ({
+          ...serializeBigInt(p),
+          created_at: p.created_at instanceof Date ? p.created_at.toISOString() : p.created_at,
+          payment_date: p.payment_date instanceof Date ? p.payment_date.toISOString().split('T')[0] : p.payment_date,
+          // Add other fields if they sometimes come as Date objects.
+        }))
+      );
     }
 
     // ---- 2. New: All payments with bus details ----
@@ -169,4 +177,17 @@ export async function POST(request: Request) {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+// Add serializeBigInt util, copied if needed:
+function serializeBigInt(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return obj.toString();
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, serializeBigInt(v)])
+    );
+  }
+  return obj;
 }

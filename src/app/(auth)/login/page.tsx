@@ -9,7 +9,6 @@ import LogoSwitcher from '@/components/LogoSwitcher';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { PrismaClient } from '@prisma/client';
 
 type Settings = {
   logo?: string;
@@ -20,88 +19,61 @@ type Settings = {
   phone?: string[];
 };
 
-const prisma = new PrismaClient();
-
 export default function Login() {
-  const { signIn } = useAuth()  
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)  
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
 
+  // Fetch settings from API (server-side only)
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // Fetch from API route to avoid using prisma on the client
         const response = await fetch('/api/settings');
-        if (!response.ok) {
-          throw new Error('Failed to load settings');
-        }
+        if (!response.ok) throw new Error('Failed to load settings');
         const data = await response.json();
-        if (data) {
-          setSettings({
-            ...data,
-            logo_blk: data.logo_blk ? `/uploads/${data.logo_blk.split('/').pop()}` : undefined,
-          });
-        }
+        setSettings({
+          ...data,
+          logo_blk: data.logo_blk ? `/settings/${data.logo_blk}` : undefined,
+        });
       } catch (err) {
         console.error('Error fetching settings:', err);
-        }
+      }
     };
     fetchSettings();
-    return () => {
-      prisma.$disconnect();
-    };
-  }, []);
+  }, []); // ← No cleanup needed
 
-  
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const { error, role } = await signIn(email, password)
+      const { error, role } = await signIn(email, password);
       if (error) {
-        toast(
-          <div>
-            <strong>Login failed</strong>
-            <div>{error.message || "Invalid credentials. Please try again."}</div>
-          </div>,
-          { className: "destructive" }
-        )
-        setError(error.message)
-        setIsLoading(false)
-        return
+        const msg = error.message || 'Invalid credentials';
+        toast.error(msg);
+        setError(msg);
+        return;
       }
-      toast(
-        <div>
-          <strong>Login successful</strong>
-          <div>Welcome!</div>
-        </div>
-      )
-      if (role === 'driver') router.push('/profile')
-      else if (role === 'admin') router.push('/admin')
-      else if (role === 'coordinator') router.push('/user')
-      else {
-        setError('No role assigned to this user')
-        setIsLoading(false)
-      }
-    } catch (err: unknown) {
-      const error = err as Error;
-      toast(
-        <div>
-          <strong>Login failed</strong>
-          <div>{error?.message || "Unexpected error. Please try again."}</div>
-        </div>,
-        { className: "destructive" }
-      )
-      setError(error?.message || 'Unexpected error')
+
+      toast.success('Login successful');
+      if (role === 'driver') router.push('/profile');
+      else if (role === 'admin') router.push('/admin');
+      else if (role === 'coordinator') router.push('/user');
+      else setError('No role assigned');
+    } catch (err: any) {
+      const msg = err?.message || 'Unexpected error';
+      toast.error(msg);
+      setError(msg);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (!settings) {
     return (
@@ -111,71 +83,69 @@ export default function Login() {
     );
   }
 
-  const settingsContent: Settings = settings || {};  
-
   return (
-    <div className='space-y-4'>
-
-        <div className="text-center mb-3">
-          <div className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center">
-            <Link href="/">
-            {(settingsContent.logo || settingsContent.logo_blk) && (
-            <>
+    <div className="space-y-4">
+      <div className="text-center mb-3">
+        <div className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center">
+          <Link href="/">
+            {(settings.logo || settings.logo_blk) && (
               <LogoSwitcher
-                logo={settingsContent.logo}
-                logo_blk={settingsContent.logo_blk}
+                logo={settings.logo}
+                logo_blk={settings.logo_blk}
                 width={256}
                 height={64}
                 alt="Annhurst Logo"
                 className="h-10 w-auto"
               />
-            </>
-          )}
-            </Link>
-          </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300">
-            Login
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Welcome Back
-          </p>
+            )}
+          </Link>
         </div>
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300">
+          Login
+        </h2>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Welcome Back</p>
+      </div>
 
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-       value={email} 
-       onChange={(e) => setEmail(e.target.value)} 
-       placeholder='Email' 
-      />
-      
-      <div className='relative'>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-         type={showPassword ? 'text' : 'password'} 
-         value={password} 
-         onChange={(e) => setPassword(e.target.value)} 
-         placeholder='Password' 
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          type="email"
+          required
         />
-        <button
-          type="button"
-          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-          onClick={() => setShowPassword(!showPassword)}
-        >
-          {showPassword ? (
-            <EyeOff className="h-5 w-5 text-gray-400" />
-          ) : (
-            <Eye className="h-5 w-5 text-gray-400" />
-          )}
-        </button>        
-      </div>  
-      <Button type="submit" className="w-full text-gray-200" disabled={isLoading}>
-              {isLoading ? 'Logging in...' : 'Login'}
-      </Button>
-    </form>
+
+        <div className="relative">
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            required
+          />
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5 text-gray-400" />
+            ) : (
+              <Eye className="h-5 w-5 text-gray-400" />
+            )}
+          </button>
+        </div>
+
+        <Button type="submit" className="w-full text-gray-200" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </Button>
+      </form>
     </div>
   );
 }

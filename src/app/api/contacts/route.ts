@@ -3,6 +3,33 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Helper: Convert BigInt → string recursively
+function serializeBigInt(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return obj.toString();
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, serializeBigInt(v)])
+    );
+  }
+  return obj;
+}
+
+/* -------------------------------------------------------------
+   2. Convert every Date → ISO-8601 string (new)
+   ------------------------------------------------------------- */
+const toISOString = (obj: any): any => {
+  return JSON.parse(
+    JSON.stringify(obj, (_, v) => (v instanceof Date ? v.toISOString() : v))
+  );
+};
+
+/* -------------------------------------------------------------
+   Helper – combine both serializers
+   ------------------------------------------------------------- */
+const safeJSON = (data: any) => toISOString(serializeBigInt(data));
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -53,15 +80,15 @@ export async function GET(request: Request) {
           select: { id: true, name: true, email: true },
         },
         subject_rel: {
-          select: { id: true, subject: true },
+          select: { id: true, subject: true, created_at: true },
         },
       },
       orderBy: { created_at: 'desc' },
     });
 
-    return NextResponse.json(contacts);
+    return NextResponse.json(safeJSON(contacts));
   } catch (error) {
-    console.error('Error fetching contacts:', error);
+    console.error('GET /api/contacts error:', error);
     return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
@@ -121,7 +148,15 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const data = await request.json();
-    const { id, is_read, is_starred } = data;
+    const { id, ids, is_read, is_starred } = data;
+
+    if (ids && Array.isArray(ids)) {
+      await prisma.contact.updateMany({
+        where: { id: { in: ids.map((i: any) => BigInt(i)) } },
+        data: { is_read, is_starred },
+      });
+      return NextResponse.json({ success: true });
+    }
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -134,11 +169,22 @@ export async function PUT(request: Request) {
     const contact = await prisma.contact.update({
       where: { id: BigInt(id) },
       data: updateData,
+      include: {
+        coordinator_rel: {
+          select: { id: true, name: true, email: true },
+        },
+        driver_rel: {
+          select: { id: true, name: true, email: true },
+        },
+        subject_rel: {
+          select: { id: true, subject: true, created_at: true },
+        },
+      },      
     });
 
-    return NextResponse.json({ 
-      message: 'Contact updated successfully',
-      contact
+    return NextResponse.json({
+      message: 'Updated',
+      contact: safeJSON(contact),
     });
   } catch (error) {
     console.error('Error updating contact:', error);

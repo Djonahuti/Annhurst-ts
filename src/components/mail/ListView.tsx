@@ -57,7 +57,11 @@ export default function ListView() {
       let mapped: Contact[] = []
       if (res.ok) {
         const data = await res.json()
-        mapped = (data as Contact[]).map((c) => ({ ...c, source: 'contact' }))
+        mapped = (data as Contact[]).map((c) => ({ 
+          ...c, 
+          source: 'contact',
+          subject: c.subject_rel ? { subject: c.subject_rel.subject } : null
+        }))
       }
 
       // Admin: augment Important with external contact_us
@@ -103,27 +107,37 @@ export default function ListView() {
     fetchContacts()
   }, [activeFilter, role, user])
 
-  // Helpers for time formatting
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  /* --------------------------------------------------------------
+     Date formatting – **ISO string only**
+     -------------------------------------------------------------- */
+  const formatSubmittedAt = (iso: string | null): string => {
+    if (!iso) return 'Unknown';
 
-  const getRelativeTime = (date: Date): string => {
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
-    const mins = Math.floor(diff / 60)
-    const hours = Math.floor(mins / 60)
-    const days = Math.floor(hours / 24)
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      console.error('Bad ISO string:', iso);
+      return 'Invalid';
+    }
 
-    if (diff < 60) return 'Just now'
-    if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`
-    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
-    if (days === 1) return 'A day ago'
-    return `${days} days ago`
-  }
+    const time = d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
 
-  const formatSubmittedAt = (timestamp: string): string => {
-    const date = new Date(timestamp)
-    return `${formatTime(date)} · ${getRelativeTime(date)}`
+    const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+    const mins = Math.floor(diffSec / 60);
+    const hrs = Math.floor(mins / 60);
+    const days = Math.floor(hrs / 24);
+
+    let rel = '';
+    if (diffSec < 60) rel = 'Just now';
+    else if (mins < 60) rel = `${mins} min${mins > 1 ? 's' : ''} ago`;
+    else if (hrs < 24) rel = `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+    else if (days === 1) rel = 'Yesterday';
+    else rel = `${days} days ago`;
+
+    return `${time} · ${rel}`;
   };
 
   const toggleStar = async (contact: Contact) => {

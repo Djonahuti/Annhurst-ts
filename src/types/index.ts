@@ -15,6 +15,7 @@ export type Contact = {
     receiver_email: string;
     driver?: { name: string; email: string; avatar: string } | null;
     subject?: { subject?: string } | null;
+    subject_rel?: { id: number; subject: string; created_at: string } | null;
     coordinator?: { customer_name?: string; customer_email?: string } | null;
     source?: "contact" | "contact_us"; // to distinguish between contact and contact_us records
 }

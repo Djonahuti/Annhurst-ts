@@ -1,27 +1,18 @@
-'use client'
+'use client';
 
-import EventCalendar from "@/components/EventCalender";
-import Modal from "@/components/Modal";
-import Contact from "@/components/Shared/Contact";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSupabase } from "@/contexts/SupabaseContext";
-import { LocateFixed, Mail, RadioTower, SendHorizontal } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-// Type for raw bus data from Supabase
-interface BusRaw {
-  id: number | string;
-  bus_code: string | null;
-  plate_no: string | null;
-  driver: { id?: number; name?: string } | { id?: number; name?: string }[] | null;
-}
+import EventCalendar from '@/components/EventCalender';
+import Modal from '@/components/Modal';
+import Contact from '@/components/Shared/Contact';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuth } from '@/contexts/AuthContext';
+import { LocateFixed, Mail, RadioTower, SendHorizontal } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Bus {
   id: number;
@@ -40,94 +31,45 @@ interface Coordinator {
 
 export default function UserProfile() {
   const router = useRouter();
-  const { user, role, loading: authLoading, signOut } = useAuth()
-  const { supabase } = useSupabase()
+  const { user, role, loading: authLoading, signOut } = useAuth();
 
-  const [buses, setBuses] = useState<Bus[]>([])
-  const [loading, setLoading] = useState(true)
-  const [coordinator, setCoordinator] = useState<Coordinator | null>(null)
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [coordinator, setCoordinator] = useState<Coordinator | null>(null);
   const [isContactModalOpen, setContactModalOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchCoordinatorAndBuses = async () => {
+    const fetchData = async () => {
       if (!authLoading && (!user || role !== 'coordinator')) {
-        router.push('/login')
-        return
+        router.push('/login');
+        return;
       }
 
-      if (authLoading) {
-        return // Wait for auth to finish loading
+      if (authLoading || !user?.email) return;
+
+      try {
+        const res = await fetch(`/api/coordinator/buses?email=${encodeURIComponent(user.email)}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+
+        const data = await res.json();
+        setCoordinator(data.coordinator);
+        setBuses(data.buses);
+      } catch (err) {
+        console.error(err);
+        router.push('/login');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Find coordinator record by email
-      const { data: coData, error: coError } = await supabase
-        .from('coordinators')
-        .select('*')
-        .eq('email', user?.email ?? '')
-        .single()
-
-      if (coError || !coData) {
-        console.error('Coordinator not found:', coError)
-        router.push('/login')
-        return
-      }
-      setCoordinator(coData)
-
-      // Fetch buses related to this coordinator
-      const { data: busesData, error: busError } = await supabase
-        .from('buses')
-        .select(`
-          id,
-          bus_code,
-          plate_no,
-          driver:driver(id, name)
-        `)
-        .eq('coordinator', coData.id)
-
-      if (busError) {
-        console.error('Error fetching buses:', busError)
-        setBuses([])
-      } else {
-        // Use BusRaw type for mapping, output Bus[]
-        const formattedBuses: Bus[] = (busesData as BusRaw[]).map((bus) => {
-          let driverObj: { id?: number; name?: string } | null = null;
-          if (Array.isArray(bus.driver)) {
-            driverObj = bus.driver.length > 0 ? bus.driver[0] : null;
-          } else if (bus.driver && typeof bus.driver === 'object') {
-            driverObj = bus.driver;
-          }
-
-          const driverName = driverObj && typeof driverObj.name === 'string' && driverObj.name.length > 0
-            ? driverObj.name
-            : 'N/A';
-
-          // Normalize driver id if present (could be string or number)
-          const driverId = driverObj && driverObj.id !== undefined
-            ? (typeof driverObj.id === 'string' ? parseInt(String(driverObj.id), 10) : Number(driverObj.id))
-            : null;
-
-          return {
-            id: typeof bus.id === 'string' ? parseInt(bus.id, 10) : bus.id,
-            bus_code: bus.bus_code ?? null,
-            plate_no: bus.plate_no ?? null,
-            driver_name: driverName,
-            driver_id: driverId,
-          };
-        });
-        setBuses(formattedBuses);
-      }
-
-      setLoading(false)
-    }
-
-    fetchCoordinatorAndBuses()
-  }, [user, role, authLoading, supabase])
+    fetchData();
+  }, [user, role, authLoading, router]);
 
   const handleLogout = async () => {
-    await signOut()
-    router.push('/login')
-  }
+    await signOut();
+    router.push('/login');
+  };
 
   if (authLoading || loading) {
     return (
@@ -141,20 +83,18 @@ export default function UserProfile() {
   return (
     <div className="max-w-4xl mx-auto py-12">
       <h2 className="text-2xl font-bold mb-6">Coordinator Profile</h2>
+
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>
-            Welcome, {coordinator?.name || user?.email}
-          </CardTitle>
+          <CardTitle>Welcome, {coordinator?.name || user?.email}</CardTitle>
         </CardHeader>
         <CardContent className="flex justify-between">
           <div className="mr-auto">
-          <p>Role: Coordinator</p>
-          <p>Email: {coordinator?.email}</p>
-          {coordinator?.phone && <p>Phone: {coordinator.phone.join(', ')}</p>}
+            <p>Role: Coordinator</p>
+            <p>Email: {coordinator?.email}</p>
+            {coordinator?.phone && <p>Phone: {coordinator.phone.join(', ')}</p>}
           </div>
-          <div className="space-y-2">
-            <p>
+          <div className="space-y-2 space-x-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="border-2 flex-1 border-primary dark:border-primary-light text-primary dark:text-primary-light hover:bg-primary-dark dark:hover:bg-primary-light hover:text-gray-200 dark:hover:text-gray-100">
@@ -162,54 +102,41 @@ export default function UserProfile() {
                   Tracker
                 </Button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem asChild>
-                  <Link
-                   href="https://www.google.com/url?q=https%3A%2F%2Fmonitor.concept-nova.com%2Fobjects&sa=D&sntz=1&usg=AOvVaw01M4s_3W-IWNHk1xNNnUbO"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                  >
+                  <Link href="https://monitor.concept-nova.com/objects" target="_blank" rel="noopener noreferrer">
                     Tracker
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link
-                   href="https://www.google.com/url?q=https%3A%2F%2Fmonitor.autotrack.ng%2Fobjects&sa=D&sntz=1&usg=AOvVaw13LwsAMr7YvUbnjCnMaJSS"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                  >
+                  <Link href="https://monitor.autotrack.ng/objects" target="_blank" rel="noopener noreferrer">
                     New Tracker
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            </p>
 
-            <p>
-              <Link
-               href="https://sites.google.com/annhurst-gsl.com/portal/home"
-               target="_blank"
-               rel="noopener noreferrer"
-              >
-                <Button size='sm' className='bg-primary text-gray-200 hover:bg-red-50 hover:text-primary'>
-                  <RadioTower />Intranet
-                </Button>
-              </Link>
-            </p>
+            <Link href="https://sites.google.com/annhurst-gsl.com/portal/home" target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="bg-primary text-gray-200 hover:bg-red-50 hover:text-primary">
+                <RadioTower className="mr-2 h-4 w-4" />
+                Intranet
+              </Button>
+            </Link>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
           <Link href="/my-inbox" className="mr-auto">
             <Button className="bg-gradient-to-r from-gray-600 to-primary-light text-gray-200 hover:from-primary-dark hover:to-primary-dark transform transition duration-300 ease-in-out hover:scale-105">
-              <Mail />Inbox
+              <Mail className="mr-2 h-4 w-4" />
+              Inbox
             </Button>
           </Link>
-          <Button onClick={handleLogout} className='text-gray-200'>
+          <Button onClick={handleLogout} className="text-gray-200">
             Logout
           </Button>
-        </CardFooter>        
+        </CardFooter>
       </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Buses Under Your Coordination</CardTitle>
@@ -249,14 +176,13 @@ export default function UserProfile() {
                         View Payments
                       </Button>
                       <Button
-                       className='mt-2 ml-auto block text-gray-200'
-                       onClick={() => {
-                         // Use the driver_id (if available) so we target the correct driver record
-                         setSelectedDriverId(bus.driver_name !== 'N/A' ? bus.driver_id : null);
-                         setContactModalOpen(true);
-                       }}
+                        className="mt-2 ml-auto block text-gray-200"
+                        onClick={() => {
+                          setSelectedDriverId(bus.driver_id);
+                          setContactModalOpen(true);
+                        }}
                       >
-                       <SendHorizontal />
+                        <SendHorizontal className="h-5 w-5" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -265,17 +191,15 @@ export default function UserProfile() {
             </Table>
           )}
         </CardContent>
-
         <CardFooter className="flex justify-between">
           <div className="text-2xl">Next End of the Month Meeting Date</div>
           <EventCalendar />
         </CardFooter>
       </Card>
-      {/* Contact Modal */}
+
       <Modal isOpen2={isContactModalOpen} onClose={() => setContactModalOpen(false)}>
         <Contact driverId={selectedDriverId} />
-      </Modal>    
+      </Modal>
     </div>
-  )
-
+  );
 }

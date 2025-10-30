@@ -29,8 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(res.error); // e.g., "Account banned" or "Invalid credentials"
     }
     // Redirect based on role after successful sign-in
-    // Return the role from the session after successful sign-in
-    return { role: session?.user?.role ?? null };
+    const { data: newSession } = await fetch('/api/auth/session').then(r => r.json());
+    return { role: newSession?.user?.role ?? null };
   };
 
   const signOut = async () => {

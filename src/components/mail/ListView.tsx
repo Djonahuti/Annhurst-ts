@@ -59,6 +59,7 @@ export default function ListView() {
         const data = await res.json()
         mapped = (data as Contact[]).map((c) => {
           let created_at: string = '';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const dateValue: any = c.created_at;
           if (typeof dateValue === 'string') {
             created_at = dateValue;
@@ -124,6 +125,7 @@ export default function ListView() {
           };
           normalizedContacts = (contactUs as ContactUs[]).map((c) => {
             let created_at: string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dateValue: any = c.created_at;
             if (typeof dateValue === 'string') {
               created_at = dateValue;
@@ -196,6 +198,7 @@ export default function ListView() {
   /* --------------------------------------------------------------
      Date formatting – **ISO string only**
      -------------------------------------------------------------- */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatSubmittedAt = (iso: string | null | undefined | any): string => {
     // Handle null, undefined, or empty values
     if (!iso) return 'Unknown';

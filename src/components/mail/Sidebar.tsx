@@ -113,6 +113,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         mapped = (data as Contact[]).map((c) => {
           // Normalize created_at to ensure it's a string
           let created_at: string = '';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const dateValue: any = c.created_at;
           if (typeof dateValue === 'string') {
             created_at = dateValue;
@@ -153,9 +154,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         const contactUsRes = await fetch('/api/contact');
         if (contactUsRes.ok) {
           const contactUs = await contactUsRes.json();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           normalizedContacts = contactUs.map((c: any) => {
             // Normalize created_at to ensure it's a string
             let created_at: string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dateValue: any = c.created_at;
             if (typeof dateValue === 'string') {
               created_at = dateValue;
@@ -216,6 +219,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     setOpen(true);
     // Normalize receiver to a string to satisfy the shared Contact type (which expects receiver: string)
     const normalizedMail = { ...mail, receiver: mail.receiver ?? '' };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSelectedMail(normalizedMail as any);
 
     if (!mail.is_read && mail.source === 'contact') {

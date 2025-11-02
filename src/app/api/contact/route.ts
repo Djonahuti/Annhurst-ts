@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 /* -------------------------------------------------------------
    Helper – serialize BigInt and Date objects in one pass
    ------------------------------------------------------------- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const safeJSON = (data: any): any => {
   return JSON.parse(
     JSON.stringify(data, (key, value) => {

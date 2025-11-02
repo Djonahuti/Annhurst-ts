@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
    This ensures Date objects are properly converted before they
    can be incorrectly serialized
    ------------------------------------------------------------- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const safeJSON = (data: any): any => {
   return JSON.parse(
     JSON.stringify(data, (key, value) => {
@@ -33,7 +34,8 @@ export async function GET(request: Request) {
     const excludeSenderEmail = searchParams.get('exclude_sender_email');
     const isStarred = searchParams.get('is_starred');
     
-    let whereClause: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const whereClause: any = {};
     
     if (coordinatorId) {
       whereClause.coordinator = BigInt(coordinatorId);
@@ -144,6 +146,7 @@ export async function PUT(request: Request) {
 
     if (ids && Array.isArray(ids)) {
       await prisma.contact.updateMany({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         where: { id: { in: ids.map((i: any) => BigInt(i)) } },
         data: { is_read, is_starred },
       });
@@ -154,6 +157,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
     if (typeof is_read === 'boolean') updateData.is_read = is_read;
     if (typeof is_starred === 'boolean') updateData.is_starred = is_starred;

@@ -49,13 +49,13 @@ export default function SignUp() {
         await signIn(email, password);
         toast.success('Welcome!');
         // The AuthContext will handle redirecting based on role
-      } catch (signInError: any) {
+      } catch {
         setError('Registration successful, but automatic login failed. Please login manually.');
         toast.error('Please login manually');
         router.push('/login');
       }
-    } catch (err: any) {
-      const msg = err?.message || 'Registration failed';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Registration failed';
       setError(msg);
       toast.error(msg);
     } finally {

@@ -66,7 +66,7 @@ interface PrismaPage {
 
 export async function GET() {
   try {
-    const page: PrismaPage | null = await prisma.pages.findFirst({
+    const page = await prisma.pages.findFirst({
       where: {
         slug: 'contact',
         is_published: true,

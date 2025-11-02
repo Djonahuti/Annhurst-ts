@@ -110,11 +110,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       let mapped: Contact[] = [];
       if (res.ok) {
         const data = await res.json();
-        mapped = (data as Contact[]).map((c) => ({ 
-          ...c, 
-          source: 'contact',
-          subject: c.subject_rel ? { subject: c.subject_rel.subject } : null
-        }));
+        mapped = (data as Contact[]).map((c) => {
+          // Normalize created_at to ensure it's a string
+          let created_at: string = '';
+          const dateValue: any = c.created_at;
+          if (typeof dateValue === 'string') {
+            created_at = dateValue;
+          } else if (dateValue instanceof Date) {
+            created_at = dateValue.toISOString();
+          } else if (dateValue && typeof dateValue === 'object') {
+            if ('toISOString' in dateValue && typeof dateValue.toISOString === 'function') {
+              created_at = dateValue.toISOString();
+            } else if ('getTime' in dateValue && typeof dateValue.getTime === 'function') {
+              created_at = new Date(dateValue.getTime()).toISOString();
+            } else {
+              try {
+                const serialized = JSON.stringify(dateValue);
+                const parsed = JSON.parse(serialized);
+                created_at = typeof parsed === 'string' && parsed.length > 0 ? parsed : new Date().toISOString();
+              } catch {
+                created_at = new Date().toISOString();
+              }
+            }
+          } else if (dateValue) {
+            const str = String(dateValue);
+            created_at = str === '[object Object]' ? new Date().toISOString() : str;
+          } else {
+            created_at = new Date().toISOString();
+          }
+          
+          return { 
+            ...c, 
+            source: 'contact',
+            subject: c.subject_rel ? { subject: c.subject_rel.subject } : null,
+            created_at
+          };
+        });
       }
 
       let normalizedContacts: Contact[] = [];
@@ -122,13 +153,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         const contactUsRes = await fetch('/api/contact');
         if (contactUsRes.ok) {
           const contactUs = await contactUsRes.json();
-          normalizedContacts = contactUs.map((c: any) => ({
-            id: Number(`us-${c.id}`),
-            coordinator_id: 0,
-            driver_id: 0,
-            subject_id: 0,
-            message: c.message,
-            created_at: c.created_at,
+          normalizedContacts = contactUs.map((c: any) => {
+            // Normalize created_at to ensure it's a string
+            let created_at: string;
+            const dateValue: any = c.created_at;
+            if (typeof dateValue === 'string') {
+              created_at = dateValue;
+            } else if (dateValue instanceof Date) {
+              created_at = dateValue.toISOString();
+            } else if (dateValue && typeof dateValue === 'object') {
+              if ('toISOString' in dateValue && typeof dateValue.toISOString === 'function') {
+                created_at = dateValue.toISOString();
+              } else if ('getTime' in dateValue && typeof dateValue.getTime === 'function') {
+                created_at = new Date(dateValue.getTime()).toISOString();
+              } else {
+                try {
+                  const serialized = JSON.stringify(dateValue);
+                  const parsed = JSON.parse(serialized);
+                  created_at = typeof parsed === 'string' && parsed.length > 0 ? parsed : new Date().toISOString();
+                } catch {
+                  created_at = new Date().toISOString();
+                }
+              }
+            } else if (dateValue) {
+              const str = String(dateValue);
+              created_at = str === '[object Object]' ? new Date().toISOString() : str;
+            } else {
+              created_at = new Date().toISOString();
+            }
+            
+            return {
+              id: -Number(c.id), // Use negative IDs to ensure uniqueness from regular contacts
+              coordinator_id: 0,
+              driver_id: 0,
+              subject_id: 0,
+              message: c.message,
+              created_at,
             transaction_date: null,
             is_starred: false,
             is_read: false,
@@ -141,7 +201,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             coordinator: null,
             subject: { subject: c.subject || 'Contact Us' },
             source: 'contact_us',
-          }));
+          };
+          });
         }
       }
 
@@ -356,7 +417,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         {activeFilter === 'Sent' ? contact.receiver || contact.sender : contact.sender}
                       </span>
                       {role === 'admin' && contact.source === 'contact_us' && (
-                        <Link href={`/contact-us/${contact.id.toString().replace('us-', '')}`}>
+                        <Link href={`/contact-us/${Math.abs(contact.id)}`}>
                           <Badge className="ml-2 bg-yellow-500 text-white">External</Badge>
                         </Link>
                       )}

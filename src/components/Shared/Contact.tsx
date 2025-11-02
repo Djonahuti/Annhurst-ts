@@ -292,11 +292,8 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
     <Card className="w-full max-w-md space-y-8 p-4 bg-gray-50 dark:bg-gray-900/90">
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold">Contact</h2>
-        <p className="text-sm text-muted-foreground">
-          Send a message to your coordinator or driver
-        </p>
       </div>
-
+      <CardContent>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Admin receiver selection */}
         {role === 'admin' && (
@@ -350,7 +347,7 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="subject">Subject</Label>
+          <Label htmlFor="subject" className="block text-sm font-medium mb-1">Subject</Label>
           <Select
             value={selectedSubject?.toString() || ""}
             onValueChange={(value) => setSelectedSubject(parseInt(value))}
@@ -358,9 +355,11 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
             <SelectTrigger>
               <SelectValue placeholder="Select a subject" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-gray-50 dark:bg-gray-900/90">
               {subjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id.toString()}>
+                <SelectItem key={subject.id} value={subject.id.toString()}
+                className="data-[state=checked]:bg-primary data-[state=checked]:text-gray-200 data-[highlighted]:bg-primary-light data-[highlighted]:text-gray-200"
+                >
                   {subject.subject}
                 </SelectItem>
               ))}
@@ -380,6 +379,24 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
           />
         </div>
 
+        <div>
+          <Label className="block text-sm font-medium mb-1">Sender</Label>
+          <div className="flex gap-2">
+          <Input
+            type="text"
+            value={currentName}
+            readOnly
+            className="border rounded px-3 py-2"
+          />
+          <Input
+            type="text"
+            value={currentEmail}
+            readOnly
+            className="border rounded px-3 py-2"
+          />    
+          </div>    
+        </div>        
+
         <div className="space-y-2">
           <Label htmlFor="attachment">Attachment (Optional)</Label>
           <Input
@@ -394,6 +411,7 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
           {loading ? "Sending..." : "Send Message"}
         </Button>
       </form>
+      </CardContent>
     </Card>
   );
 }

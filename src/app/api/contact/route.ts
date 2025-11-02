@@ -3,16 +3,27 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-function serializeBigInt<T>(data: T): T {
+/* -------------------------------------------------------------
+   Helper – serialize BigInt and Date objects in one pass
+   ------------------------------------------------------------- */
+const safeJSON = (data: any): any => {
   return JSON.parse(
-    JSON.stringify(data, (_key, value) => (typeof value === 'bigint' ? Number(value) : value))
+    JSON.stringify(data, (key, value) => {
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      if (typeof value === 'bigint') {
+        return Number(value);
+      }
+      return value;
+    })
   );
-}
+};
 
 export async function GET() {
   try {
-    const rows = await prisma.contactUs.findMany({ orderBy: { created_at: 'desc' } });
-    return NextResponse.json(serializeBigInt(rows));
+    const rows = await prisma.contact_us.findMany({ orderBy: { created_at: 'desc' } });
+    return NextResponse.json(safeJSON(rows));
   } catch (error) {
     console.error('Error fetching contact_us:', error);
     return NextResponse.json({ error: 'Failed to fetch contact messages' }, { status: 500 });
@@ -31,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name, email, and message are required' }, { status: 400 });
     }
 
-    await prisma.contactUs.create({
+    await prisma.contact_us.create({
       data: {
         name,
         email,

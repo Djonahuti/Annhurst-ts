@@ -3,32 +3,24 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Helper: Convert BigInt → string recursively
-function serializeBigInt(obj: any): any {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj === 'bigint') return obj.toString();
-  if (Array.isArray(obj)) return obj.map(serializeBigInt);
-  if (obj && typeof obj === 'object') {
-    return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, serializeBigInt(v)])
-    );
-  }
-  return obj;
-}
-
 /* -------------------------------------------------------------
-   2. Convert every Date → ISO-8601 string (new)
+   Helper – serialize BigInt and Date objects in one pass
+   This ensures Date objects are properly converted before they
+   can be incorrectly serialized
    ------------------------------------------------------------- */
-const toISOString = (obj: any): any => {
+const safeJSON = (data: any): any => {
   return JSON.parse(
-    JSON.stringify(obj, (_, v) => (v instanceof Date ? v.toISOString() : v))
+    JSON.stringify(data, (key, value) => {
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      if (typeof value === 'bigint') {
+        return Number(value);
+      }
+      return value;
+    })
   );
 };
-
-/* -------------------------------------------------------------
-   Helper – combine both serializers
-   ------------------------------------------------------------- */
-const safeJSON = (data: any) => toISOString(serializeBigInt(data));
 
 export async function GET(request: Request) {
   try {

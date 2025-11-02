@@ -57,11 +57,55 @@ export default function ListView() {
       let mapped: Contact[] = []
       if (res.ok) {
         const data = await res.json()
-        mapped = (data as Contact[]).map((c) => ({ 
-          ...c, 
-          source: 'contact',
-          subject: c.subject_rel ? { subject: c.subject_rel.subject } : null
-        }))
+        mapped = (data as Contact[]).map((c) => {
+          let created_at: string = '';
+          const dateValue: any = c.created_at;
+          if (typeof dateValue === 'string') {
+            created_at = dateValue;
+          } else if (dateValue instanceof Date) {
+            created_at = dateValue.toISOString();
+          } else if (dateValue && typeof dateValue === 'object') {
+            // Handle Date-like objects or objects that should be dates
+            if ('toISOString' in dateValue && typeof dateValue.toISOString === 'function') {
+              created_at = dateValue.toISOString();
+            } else if ('getTime' in dateValue && typeof dateValue.getTime === 'function') {
+              created_at = new Date(dateValue.getTime()).toISOString();
+            } else {
+              // Try to extract date info from object properties
+              console.warn('Date object detected in contact, attempting conversion:', dateValue);
+              // Try JSON serialization to see if it reveals a date string
+              try {
+                const serialized = JSON.stringify(dateValue);
+                const parsed = JSON.parse(serialized);
+                if (typeof parsed === 'string' && parsed.length > 0) {
+                  created_at = parsed;
+                } else {
+                  created_at = new Date().toISOString(); // fallback
+                }
+              } catch {
+                created_at = new Date().toISOString(); // fallback
+              }
+            }
+          } else if (dateValue) {
+            // Only call String if it's not an object
+            const str = String(dateValue);
+            if (str === '[object Object]') {
+              console.warn('Date value is object, using fallback:', dateValue);
+              created_at = new Date().toISOString();
+            } else {
+              created_at = str;
+            }
+          } else {
+            created_at = new Date().toISOString();
+          }
+          
+          return { 
+            ...c, 
+            source: 'contact',
+            subject: c.subject_rel ? { subject: c.subject_rel.subject } : null,
+            created_at
+          };
+        })
       }
 
       // Admin: augment Important with external contact_us
@@ -78,14 +122,55 @@ export default function ListView() {
             message: string;
             created_at: string;
           };
-          normalizedContacts = (contactUs as ContactUs[]).map((c) => ({
-            id: c.id,
-            coordinator_id: 0,
-            driver_id: 0,
-            subject_id: 0,
-            message: c.message,
-            created_at: c.created_at,
-            transaction_date: null,
+          normalizedContacts = (contactUs as ContactUs[]).map((c) => {
+            let created_at: string;
+            const dateValue: any = c.created_at;
+            if (typeof dateValue === 'string') {
+              created_at = dateValue;
+            } else if (dateValue instanceof Date) {
+              created_at = dateValue.toISOString();
+            } else if (dateValue && typeof dateValue === 'object') {
+              // Handle Date-like objects or objects that should be dates
+              if ('toISOString' in dateValue && typeof dateValue.toISOString === 'function') {
+                created_at = dateValue.toISOString();
+              } else if ('getTime' in dateValue && typeof dateValue.getTime === 'function') {
+                created_at = new Date(dateValue.getTime()).toISOString();
+              } else {
+                // Try to extract date info from object properties
+                console.warn('Date object detected in contact_us, attempting conversion:', dateValue);
+                try {
+                  const serialized = JSON.stringify(dateValue);
+                  const parsed = JSON.parse(serialized);
+                  if (typeof parsed === 'string' && parsed.length > 0) {
+                    created_at = parsed;
+                  } else {
+                    created_at = new Date().toISOString(); // fallback
+                  }
+                } catch {
+                  created_at = new Date().toISOString(); // fallback
+                }
+              }
+            } else if (dateValue) {
+              // Only call String if it's not an object
+              const str = String(dateValue);
+              if (str === '[object Object]') {
+                console.warn('Date value is object in contact_us, using fallback:', dateValue);
+                created_at = new Date().toISOString();
+              } else {
+                created_at = str;
+              }
+            } else {
+              created_at = new Date().toISOString();
+            }
+            
+            return {
+              id: c.id,
+              coordinator_id: 0,
+              driver_id: 0,
+              subject_id: 0,
+              message: c.message,
+              created_at,
+              transaction_date: null,
             is_starred: false,
             is_read: false,
             attachment: null,
@@ -97,7 +182,8 @@ export default function ListView() {
             subject: { subject: c.subject || 'Contact Us' },
             coordinator: null,
             source: 'contact_us',
-          }))
+          };
+          })
         }
       }
 
@@ -110,12 +196,60 @@ export default function ListView() {
   /* --------------------------------------------------------------
      Date formatting – **ISO string only**
      -------------------------------------------------------------- */
-  const formatSubmittedAt = (iso: string | null): string => {
+  const formatSubmittedAt = (iso: string | null | undefined | any): string => {
+    // Handle null, undefined, or empty values
     if (!iso) return 'Unknown';
+    
+    let dateStr: string;
+    
+    // If it's already a Date object, convert to ISO string
+    if (iso instanceof Date) {
+      if (isNaN(iso.getTime())) return 'Invalid';
+      dateStr = iso.toISOString();
+    } else if (typeof iso === 'object' && iso !== null) {
+      // Try to extract date from object - could be a Date-like object or serialized date
+      if ('toISOString' in iso && typeof iso.toISOString === 'function') {
+        try {
+          dateStr = iso.toISOString();
+        } catch (e) {
+          console.error('Failed to convert Date object:', iso);
+          return 'Invalid';
+        }
+      } else if ('$date' in iso || '__type' in iso) {
+        // Handle special date formats (e.g., MongoDB date format)
+        dateStr = iso.$date || iso.value || String(iso);
+      } else {
+        // Try to construct date from common date properties
+        const dateValue = iso.toString?.() || JSON.stringify(iso);
+        // Check if it's the "[object Object]" string - try to parse original
+        if (dateValue === '[object Object]') {
+          console.error('Date is an object without date methods:', iso);
+          // Try to extract timestamp if available
+          if ('getTime' in iso && typeof iso.getTime === 'function') {
+            dateStr = new Date(iso.getTime()).toISOString();
+          } else {
+            return 'Invalid';
+          }
+        } else {
+          dateStr = dateValue;
+        }
+      }
+    } else if (typeof iso !== 'string') {
+      // If it's not a string, try to convert it
+      const str = String(iso);
+      // Avoid "[object Object]" by checking the string
+      if (str === '[object Object]') {
+        console.error('Cannot convert date object:', iso);
+        return 'Invalid';
+      }
+      dateStr = str;
+    } else {
+      dateStr = iso;
+    }
 
-    const d = new Date(iso);
+    const d = new Date(dateStr);
     if (isNaN(d.getTime())) {
-      console.error('Bad ISO string:', iso);
+      console.error('Bad ISO string:', dateStr, 'Original type:', typeof iso, 'Original value:', iso);
       return 'Invalid';
     }
 

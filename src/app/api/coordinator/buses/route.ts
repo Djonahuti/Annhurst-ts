@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Helper: Convert BigInt → string
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeBigInt(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'bigint') return obj.toString();
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
 
     const serialized = {
       coordinator: serializeBigInt(coordinator),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       buses: buses.map((b: any) => ({
         id: Number(b.id),
         bus_code: b.bus_code,

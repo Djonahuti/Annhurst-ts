@@ -66,8 +66,8 @@ export default function Login() {
       else if (role === 'admin') router.push('/admin');
       else if (role === 'coordinator') router.push('/user');
       else setError('No role assigned');
-    } catch (err: any) {
-      const msg = err?.message || 'Unexpected error';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error';
       toast.error(msg);
       setError(msg);
     } finally {

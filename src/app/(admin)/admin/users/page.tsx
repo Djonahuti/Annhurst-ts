@@ -58,6 +58,7 @@ export default function ViewUsers() {
         adminsRes.json(),
       ]);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setDrivers((driversJson || []).map((d: any) => ({
         id: Number(d.id),
         name: d.name,
@@ -68,6 +69,7 @@ export default function ViewUsers() {
         banned: Boolean(d.banned),
       })));
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setCoordinators((coordinatorsJson || []).map((c: any) => ({
         id: Number(c.id),
         name: c.name,
@@ -76,6 +78,7 @@ export default function ViewUsers() {
         banned: Boolean(c.banned),
       })));
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setAdmins((adminsJson || []).map((a: any) => ({
         id: Number(a.id),
         name: a.name,

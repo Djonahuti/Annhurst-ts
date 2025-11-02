@@ -48,7 +48,7 @@ type UserData = {
 export function PopRight() {
   const [isPopOpen, setIsPopOpen] = React.useState(false)
   const [unreadCount, setUnreadCount] = React.useState(0);
-  const { user, role } = useAuth();
+  const { user, role, signOut } = useAuth();
 
   const data = [
     [
@@ -176,7 +176,6 @@ export function PopRight() {
 
   const handleLogout = async () => {
     // Use NextAuth signOut instead of Supabase
-    const { signOut } = useAuth();
     await signOut();
   }
 

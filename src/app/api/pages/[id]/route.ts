@@ -33,6 +33,7 @@ export async function PATCH(
     const data = await request.json();
     const updated = await prisma.pages.update({ where: { id: Number(params.id) }, data });
     return NextResponse.json(serializeBigInt(updated));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.code === 'P2025') return NextResponse.json({ error: 'Not found' }, { status: 404 });
     console.error('Error updating page:', error);
@@ -49,6 +50,7 @@ export async function DELETE(
   try {
     await prisma.pages.delete({ where: { id: Number(params.id) } });
     return NextResponse.json({ success: true });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.code === 'P2025') return NextResponse.json({ error: 'Not found' }, { status: 404 });
     console.error('Error deleting page:', error);

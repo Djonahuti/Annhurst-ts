@@ -98,6 +98,7 @@ export async function PATCH(request: Request) {
     };
 
     return NextResponse.json(response);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Settings not found' }, { status: 404 });

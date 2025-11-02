@@ -58,6 +58,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({ message: 'Bus updated', e_payment: updated.e_payment ? Number(updated.e_payment) : null });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Bus not found' }, { status: 404 });

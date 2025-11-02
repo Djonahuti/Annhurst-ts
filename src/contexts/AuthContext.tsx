@@ -4,6 +4,7 @@ import { useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any | null;
   loading: boolean;
   role: 'driver' | 'admin' | 'coordinator' | null;

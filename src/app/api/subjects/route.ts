@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Helper: Convert BigInt → string + format dates
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeSubject(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'bigint') return obj.toString();
@@ -33,6 +34,7 @@ export async function GET() {
     const serialized = subjects.map(serializeSubject);
 
     return NextResponse.json(serialized);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Error fetching subjects:', error);
     return NextResponse.json({ error: 'Failed to fetch subjects' }, { status: 500 });
@@ -58,6 +60,7 @@ export async function POST(request: Request) {
       message: 'Subject created successfully',
       subject: serializeSubject(newSubject),
     }, { status: 201 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Error creating subject:', error);
     return NextResponse.json({ error: 'Failed to create subject' }, { status: 500 });

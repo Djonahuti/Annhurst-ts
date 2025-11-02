@@ -180,6 +180,7 @@ export async function POST(request: Request) {
 }
 
 // Add serializeBigInt util, copied if needed:
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeBigInt(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'bigint') return obj.toString();

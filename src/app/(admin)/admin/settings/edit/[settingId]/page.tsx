@@ -115,9 +115,8 @@ export default function SettingsEdit() {
     <div className="max-w-4xl mx-auto p-8 space-y-6">
       <h1 className="text-2xl font-bold">Edit Settings</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
         {/* Text Fields */}
-        <div className="space-y-4">
           <Textarea
             placeholder="Address"
             value={formData.address || ''}
@@ -152,9 +151,7 @@ export default function SettingsEdit() {
             value={formData.footer_head2 || ''}
             onChange={(e) => handleChange('footer_head2', e.target.value)}
           />
-        </div>
 
-        <div className="space-y-4">
           <Input
             placeholder="Services (comma separated)"
             value={formData.services?.join(', ') || ''}
@@ -175,9 +172,10 @@ export default function SettingsEdit() {
             }
           />
 
+
           {/* Logo Upload */}
           <div>
-            <label className="block font-medium mb-1">Main Logo</label>
+            <label className="block font-medium">Main Logo</label>
             <Input
               type="file"
               accept="image/*"
@@ -190,7 +188,7 @@ export default function SettingsEdit() {
                   alt="Logo"
                   width={200}
                   height={80}
-                  className="rounded border"
+                  className="mt-2 bg-gray-50 bg-gradient-to-r dark:from-gray-400 dark:to-red-300"
                 />
               </div>
             )}
@@ -198,7 +196,7 @@ export default function SettingsEdit() {
 
           {/* Logo Black Upload */}
           <div>
-            <label className="block font-medium mb-1">Logo (Black)</label>
+            <label className="block font-medium">Logo (Black)</label>
             <Input
               type="file"
               accept="image/*"
@@ -211,19 +209,18 @@ export default function SettingsEdit() {
                   alt="Logo Black"
                   width={200}
                   height={80}
-                  className="rounded border bg-gray-900 p-2"
+                  className="bg-gray-900/80 p-2"
                 />
               </div>
             )}
-          </div>
-        </div>
+            </div>
       </div>
 
-      <div className="flex justify-end space-x-4 pt-6">
+      <div className="flex space-x-4 pt-6">
         <Button variant="outline" onClick={() => router.push('/admin/settings')}>
           Cancel
         </Button>
-        <Button onClick={handleSave}>Save Changes</Button>
+        <Button onClick={handleSave} className="text-gray-200">Save</Button>
       </div>
     </div>
   );

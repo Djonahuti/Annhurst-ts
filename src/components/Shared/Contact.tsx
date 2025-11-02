@@ -290,16 +290,13 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
 
   return (
     <Card className="w-full max-w-md space-y-8 p-4 bg-gray-50 dark:bg-gray-900/90">
-      <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-bold">Contact</h2>
-      </div>
       <CardContent>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Admin receiver selection */}
         {role === 'admin' && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="receiverType">Receiver Type</Label>
+              <Label htmlFor="receiverType" className="block text-sm font-medium mb-1">Send to</Label>
               <Select
                 value={receiverType || ""}
                 onValueChange={(value) => {
@@ -310,9 +307,13 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
                 <SelectTrigger>
                   <SelectValue placeholder="Select receiver type" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="coordinator">Coordinator</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
+                <SelectContent className="bg-gray-50 dark:bg-gray-900/90">
+                  <SelectItem value="coordinator"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:text-gray-200 data-[highlighted]:bg-primary-light data-[highlighted]:text-gray-200"
+                  >Coordinator</SelectItem>
+                  <SelectItem value="driver"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:text-gray-200 data-[highlighted]:bg-primary-light data-[highlighted]:text-gray-200"
+                  >Driver</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -325,12 +326,14 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
                   onValueChange={(value) => setSelectedReceiverId(parseInt(value))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select receiver" />
+                    <SelectValue placeholder="Select coordinator" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-gray-50 dark:bg-gray-900/90">
                     {receiverType === 'coordinator'
                       ? coordinatorsList.map((coord) => (
-                          <SelectItem key={coord.id} value={coord.id.toString()}>
+                          <SelectItem key={coord.id} value={coord.id.toString()}
+                          className="data-[state=checked]:bg-primary data-[state=checked]:text-gray-200 data-[highlighted]:bg-primary-light data-[highlighted]:text-gray-200"
+                          >
                             {coord.name} ({coord.email})
                           </SelectItem>
                         ))
@@ -407,7 +410,7 @@ export default function Contact({ coordinatorId, driverId, onSuccess }: ContactP
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full text-gray-200" disabled={loading}>
           {loading ? "Sending..." : "Send Message"}
         </Button>
       </form>

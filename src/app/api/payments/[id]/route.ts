@@ -5,9 +5,10 @@ const prisma = new PrismaClient();
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const paymentId = BigInt(params.id);
+  const { id } = await params;
+  const paymentId = BigInt(id);
   const { pay_complete } = await request.json();
 
   try {

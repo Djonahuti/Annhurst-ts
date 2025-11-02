@@ -11,10 +11,11 @@ function serializeBigInt<T>(data: T): T {
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const page = await prisma.pages.findUnique({ where: { id: Number(params.id) } });
+    const { id } = await params;
+    const page = await prisma.pages.findUnique({ where: { id: Number(id) } });
     if (!page) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(serializeBigInt(page));
   } catch (error) {
@@ -27,11 +28,12 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const data = await request.json();
-    const updated = await prisma.pages.update({ where: { id: Number(params.id) }, data });
+    const updated = await prisma.pages.update({ where: { id: Number(id) }, data });
     return NextResponse.json(serializeBigInt(updated));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -45,10 +47,11 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await prisma.pages.delete({ where: { id: Number(params.id) } });
+    const { id } = await params;
+    await prisma.pages.delete({ where: { id: Number(id) } });
     return NextResponse.json({ success: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {

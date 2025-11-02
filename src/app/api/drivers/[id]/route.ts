@@ -5,9 +5,10 @@ const prisma = new PrismaClient();
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const driverId = BigInt(params.id);
+  const { id } = await params;
+  const driverId = BigInt(id);
   const body = await request.json();
 
   const {

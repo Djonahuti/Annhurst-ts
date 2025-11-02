@@ -10,10 +10,11 @@ const prisma = new PrismaClient();
    ------------------------------------------------- */
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const busId = parseInt(params.id, 10);
+    const { id } = await params;
+    const busId = parseInt(id, 10);
     if (isNaN(busId)) {
       return NextResponse.json({ error: 'Invalid bus ID' }, { status: 400 });
     }
@@ -42,10 +43,11 @@ export async function GET(
    ------------------------------------------------- */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const busId = parseInt(params.id, 10);
+    const { id } = await params;
+    const busId = parseInt(id, 10);
     if (isNaN(busId)) {
       return NextResponse.json({ error: 'Invalid bus ID' }, { status: 400 });
     }

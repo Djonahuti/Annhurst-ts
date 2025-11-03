@@ -90,50 +90,82 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Prepare request data and build payload once so we can safely retry without re-reading the body
+  const data = await request.json();
+  const {
+    coordinator,
+    driver,
+    subject,
+    message,
+    attachment,
+    sender,
+    receiver,
+    sender_email,
+    receiver_email,
+    is_starred,
+  } = data;
+
+  // Basic validation
+  if (!message) {
+    return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  }
+
+  // Explicitly exclude id to prevent unique constraint violations
+  // The id field is auto-incremented by the database
+  const createData = {
+    coordinator: coordinator ? BigInt(coordinator) : null,
+    driver: driver ? BigInt(driver) : null,
+    subject: subject ? BigInt(subject) : null,
+    message,
+    attachment: attachment || null,
+    sender: sender || null,
+    receiver: receiver || null,
+    sender_email: sender_email || null,
+    receiver_email: receiver_email || null,
+    is_starred: is_starred || false,
+    is_read: false,
+    transaction_date: new Date(),
+  };
+
   try {
-    const data = await request.json();
-    const {
-      coordinator,
-      driver,
-      subject,
-      message,
-      attachment,
-      sender,
-      receiver,
-      sender_email,
-      receiver_email,
-      is_starred,
-    } = data;
-
-    // Basic validation
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
-    }
-
-    const contact = await prisma.contact.create({
-      data: {
-        coordinator: coordinator ? BigInt(coordinator) : null,
-        driver: driver ? BigInt(driver) : null,
-        subject: subject ? BigInt(subject) : null,
-        message,
-        attachment: attachment || null,
-        sender: sender || null,
-        receiver: receiver || null,
-        sender_email: sender_email || null,
-        receiver_email: receiver_email || null,
-        is_starred: is_starred || false,
-        is_read: false,
-        transaction_date: new Date(),
-      },
-    });
+    const contact = await prisma.contact.create({ data: createData });
 
     return NextResponse.json({ 
       message: 'Contact created successfully',
-      contact
+      contact: safeJSON(contact)
     }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating contact:', error);
-    return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 });
+    
+    // Handle Prisma specific errors
+    if (error.code === 'P2002') {
+      // Attempt self-heal for out-of-sync sequence on contact.id, then retry once
+      try {
+        await prisma.$executeRawUnsafe(`
+          SELECT setval(
+            'public.contact_id_seq',
+            COALESCE((SELECT MAX(id) FROM public.contact), 1),
+            true
+          );
+        `);
+        const contact = await prisma.contact.create({ data: createData });
+        return NextResponse.json({ 
+          message: 'Contact created successfully',
+          contact: safeJSON(contact)
+        }, { status: 201 });
+      } catch (healErr: any) {
+        console.error('Sequence self-heal failed:', healErr);
+        return NextResponse.json({ 
+          error: 'Unique constraint violation. Sequence reset failed. Please contact an administrator.',
+          details: healErr?.message || error.meta?.target
+        }, { status: 409 });
+      }
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to create contact',
+      details: error.message 
+    }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }

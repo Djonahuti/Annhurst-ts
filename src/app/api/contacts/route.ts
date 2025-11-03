@@ -134,6 +134,7 @@ export async function POST(request: Request) {
       message: 'Contact created successfully',
       contact: safeJSON(contact)
     }, { status: 201 });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any    
   } catch (error: any) {
     console.error('Error creating contact:', error);
     
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
           message: 'Contact created successfully',
           contact: safeJSON(contact)
         }, { status: 201 });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any        
       } catch (healErr: any) {
         console.error('Sequence self-heal failed:', healErr);
         return NextResponse.json({ 

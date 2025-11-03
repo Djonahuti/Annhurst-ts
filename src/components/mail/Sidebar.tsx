@@ -35,6 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Contact } from '@/types';
+import LogoSwitcher from '../LogoSwitcher';
 
 interface Settings {
   logo: string | null;
@@ -73,15 +74,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (res.ok) setSettings(await res.json());
     };
     fetchSettings();
-  }, []);
-
-  // Theme detection
-  React.useEffect(() => {
-    const updateTheme = () => setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    updateTheme();
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
   }, []);
 
   // Fetch contacts
@@ -316,9 +308,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     );
   }
 
-  const logoKey = theme === 'dark' ? 'logo_blk' : 'logo';
-  const logoPath = settings[logoKey] || settings.logo || 'logo.png';
-  const logoUrl = `/settings/${logoPath}`;
+  const settingsContent: Settings = settings || {};
 
   return (
     <Sidebar collapsible="icon" className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row" {...props}>
@@ -333,7 +323,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
                 <a href={getHomeLink()}>
                   <div className="flex aspect-square size-8 items-center justify-center text-sidebar-primary-foreground">
-                    <img src={logoUrl} alt="logo" width={85} height={20} />
+                  {(settingsContent.logo || settingsContent.logo_blk) && (
+                    <>
+                      <LogoSwitcher
+                        logo={settingsContent.logo}
+                        logo_blk={settingsContent.logo_blk}
+                        width={85}
+                        height={20}
+                        alt="Annhurst Logo"
+                        className="w-auto"
+                      />
+                    </>
+                  )}
                   </div>
                 </a>
               </SidebarMenuButton>

@@ -105,71 +105,100 @@ export async function GET(request: Request) {
    POST /api/payments
    ------------------------------------------------- */
 export async function POST(request: Request) {
+  // Parse body once so we can reuse on retry
+  const data = await request.json();
+  const {
+    week,
+    completed_by,
+    coordinator,
+    bus,           // ← this is bus ID (number)
+    p_week,
+    receipt,
+    amount,
+    sender,
+    payment_day,
+    payment_date,
+    pay_type,
+    pay_complete,
+    issue,
+    inspection,
+  } = data;
+
+  if (
+    !week ||
+    !completed_by ||
+    !coordinator ||
+    !bus ||
+    !p_week ||
+    !receipt ||
+    !payment_day ||
+    !payment_date ||
+    !pay_type ||
+    !pay_complete ||
+    !issue ||
+    !inspection
+  ) {
+    return NextResponse.json(
+      { error: 'All required fields must be provided' },
+      { status: 400 }
+    );
+  }
+
+  const createData = {
+    week: new Date(week),
+    completed_by,
+    coordinator,
+    bus: BigInt(bus),
+    p_week,
+    receipt,
+    amount: amount ? Number(amount) : null,
+    sender: sender || null,
+    payment_day,
+    payment_date: new Date(payment_date),
+    pay_type,
+    pay_complete,
+    issue,
+    inspection,
+    created_at: new Date(),
+  };
+
   try {
-    const data = await request.json();
-    const {
-      week,
-      completed_by,
-      coordinator,
-      bus,           // ← this is bus ID (number)
-      p_week,
-      receipt,
-      amount,
-      sender,
-      payment_day,
-      payment_date,
-      pay_type,
-      pay_complete,
-      issue,
-      inspection,
-    } = data;
-
-    if (
-      !week ||
-      !completed_by ||
-      !coordinator ||
-      !bus ||
-      !p_week ||
-      !receipt ||
-      !payment_day ||
-      !payment_date ||
-      !pay_type ||
-      !pay_complete ||
-      !issue ||
-      !inspection
-    ) {
-      return NextResponse.json(
-        { error: 'All required fields must be provided' },
-        { status: 400 }
-      );
-    }
-
-    await prisma.payment.create({
-      data: {
-        week: new Date(week),
-        completed_by,
-        coordinator,
-        bus: BigInt(bus),           // ← FK column
-        p_week,
-        receipt,
-        amount: amount ? Number(amount) : null,
-        sender: sender || null,
-        payment_day,
-        payment_date: new Date(payment_date),
-        pay_type,
-        pay_complete,
-        issue,
-        inspection,
-        created_at: new Date(),
-      },
-    });
+    await prisma.payment.create({ data: createData });
 
     return NextResponse.json(
       { message: 'Payment submitted successfully' },
       { status: 201 }
     );
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any    
+  } catch (error: any) {
     console.error('Error submitting payment:', error);
+
+    if (error.code === 'P2002') {
+      // Reset sequence for payment and retry once
+      try {
+        await prisma.$executeRawUnsafe(`
+          SELECT setval(
+            'public.payment_id_seq',
+            COALESCE((SELECT MAX(id) FROM public.payment), 1),
+            true
+          );
+        `);
+
+        await prisma.payment.create({ data: createData });
+        return NextResponse.json(
+          { message: 'Payment submitted successfully' },
+          { status: 201 }
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any        
+      } catch (healErr: any) {
+        console.error('Payment sequence self-heal failed:', healErr);
+        return NextResponse.json(
+          { error: 'Unique constraint violation on payment id; sequence reset failed.' },
+          { status: 409 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { error: 'Failed to submit payment' },
       { status: 500 }

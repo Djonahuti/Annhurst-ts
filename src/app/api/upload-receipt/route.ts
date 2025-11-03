@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
   try {
@@ -13,15 +12,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File and filename are required' }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    // Store in public/receipts/dr using the provided filename without UUIDs
+    const uploadDir = path.join(process.cwd(), 'public', 'receipts', 'dr');
     await fs.mkdir(uploadDir, { recursive: true });
 
-    const uniqueFilename = `${uuidv4()}-${filename}`;
-    const filePath = path.join(uploadDir, uniqueFilename);
+    // Use the provided filename as-is
+    const safeFilename = filename;
+    const filePath = path.join(uploadDir, safeFilename);
     const arrayBuffer = await file.arrayBuffer();
     await fs.writeFile(filePath, Buffer.from(arrayBuffer));
 
-    return NextResponse.json({ message: 'File uploaded successfully', filename: uniqueFilename });
+    // Return relative URL for client usage
+    const url = path.posix.join('/receipts/dr', safeFilename);
+    return NextResponse.json({ message: 'File uploaded successfully', filename: safeFilename, url });
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });

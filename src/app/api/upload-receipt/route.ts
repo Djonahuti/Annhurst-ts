@@ -12,8 +12,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File and filename are required' }, { status: 400 });
     }
 
-    // Store in public/receipts/dr using the provided filename without UUIDs
-    const uploadDir = path.join(process.cwd(), 'public', 'receipts', 'dr');
+    // Store in public/uploads using the provided filename without UUIDs
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
     await fs.mkdir(uploadDir, { recursive: true });
 
     // Use the provided filename as-is
@@ -22,8 +22,8 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     await fs.writeFile(filePath, Buffer.from(arrayBuffer));
 
-    // Return relative URL for client usage
-    const url = path.posix.join('/receipts/dr', safeFilename);
+    // Return relative URL for client usage (served statically in dev and build)
+    const url = path.posix.join('/uploads', safeFilename);
     return NextResponse.json({ message: 'File uploaded successfully', filename: safeFilename, url });
   } catch (error) {
     console.error('Error uploading file:', error);

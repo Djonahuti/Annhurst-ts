@@ -130,7 +130,7 @@ export default function PaymentHistory() {
               </TableHeader>
               <TableBody>
                 {payments.map((p) => {
-                  const localUrl = p.receipt ? `/receipts/dr/${encodeURIComponent(p.receipt)}` : null;
+                  const localUrl = p.receipt ? `/uploads/${encodeURIComponent(p.receipt)}` : null;
                   const supabaseUrl = p.receipt ? supabaseUrls[p.receipt] : null;
                   // Only use supabaseUrl if it looks valid (not empty, not just the bucket root)
                   const isSupabaseValid = supabaseUrl && supabaseUrl !== "" && !supabaseUrl.endsWith("/receipts/");
@@ -202,7 +202,7 @@ export default function PaymentHistory() {
                 onError={(e) => {
                   // fallback to local file if supabase fails
                   if (previewUrl && previewUrl.startsWith("http")) {
-                    const localFallback = `/receipts/dr/${encodeURIComponent(previewUrl.split('/').pop() || '')}`;
+                    const localFallback = `/uploads/${encodeURIComponent(previewUrl.split('/').pop() || '')}`;
                     setPreviewUrl(localFallback);
                   }
                 }}
@@ -215,7 +215,7 @@ export default function PaymentHistory() {
                 onError={(e) => {
                   // fallback to local file if supabase fails
                   if (previewUrl && previewUrl.startsWith("http")) {
-                    const localFallback = `/receipts/dr/${encodeURIComponent(previewUrl.split('/').pop() || '')}`;
+                    const localFallback = `/uploads/${encodeURIComponent(previewUrl.split('/').pop() || '')}`;
                     setPreviewUrl(localFallback);
                   }
                 }}

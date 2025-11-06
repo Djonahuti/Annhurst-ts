@@ -22,6 +22,7 @@ import {
   FolderOpen,
   Home,
 } from 'lucide-react';
+import { IconFileTypePdf, IconPhoto, IconVideo } from '@tabler/icons-react';
 import { toast } from 'sonner';
 
 interface FileItem {
@@ -119,6 +120,24 @@ export default function FileManager() {
     if (item.type === 'directory') {
       return <Folder className="h-5 w-5 text-blue-500" />;
     }
+    
+    // Get file extension
+    const extension = item.name.split('.').pop()?.toLowerCase();
+    
+    // Return icon based on file extension
+    if (extension === 'pdf') {
+      return <IconFileTypePdf className="h-5 w-5 text-red-500" stroke={2} />;
+    }
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '')) {
+      return <IconPhoto className="h-5 w-5 text-green-500" stroke={2} />;
+    }
+    
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension || '')) {
+      return <IconVideo className="h-5 w-5 text-purple-500" stroke={2} />;
+    }
+    
+    // Default file icon for other types
     return <File className="h-5 w-5 text-gray-500" />;
   };
 

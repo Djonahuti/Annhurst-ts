@@ -114,7 +114,7 @@ If your personal key doesn't work, create a new key just for GitHub Actions:
 # Generate new key
 ssh-keygen -t ed25519 -C "github-actions@annhurst-ts.com" -f $env:USERPROFILE\.ssh\github_actions_key
 
-# Don't add a passphrase (press Enter)
+# Don't add a passphrase (press Enter) 
 
 # View the private key
 Get-Content $env:USERPROFILE\.ssh\github_actions_key

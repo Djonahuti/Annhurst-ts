@@ -39,13 +39,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  // Redirect to appropriate dashboard on session change
+  // Only redirect on initial login, not on page refresh
+  // Check if we're already on a valid page for the user's role
   useEffect(() => {
-    if (!loading && user) {
-      if (role === 'admin') router.push('/admin');
-      else if (role === 'coordinator') router.push('/user');
-      else if (role === 'driver') router.push('/profile');
-      else router.push('/login?error=unknown_role');
+    if (!loading && user && role) {
+      const currentPath = window.location.pathname;
+      const isLoginPage = currentPath === '/login';
+      const isSignupPage = currentPath === '/signup';
+      
+      // Only redirect if on login/signup page or if user has no role
+      if (isLoginPage || isSignupPage || !role) {
+        if (role === 'admin') router.push('/admin');
+        else if (role === 'coordinator') router.push('/user');
+        else if (role === 'driver') router.push('/profile');
+        else if (!role) router.push('/login?error=unknown_role');
+      }
+      // Otherwise, stay on current page (don't redirect on refresh)
     }
   }, [user, role, loading, router]);
 

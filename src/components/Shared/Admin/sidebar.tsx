@@ -1,12 +1,13 @@
 'use client'
 import LogoSwitcher from "@/components/LogoSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Bus, Coins, Contact, FileText, Home, Mail, Settings, Users, X } from "lucide-react";
+import { Bus, Coins, Contact, FileText, Home, Mail, Settings, Users, X, FolderTree } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
-const navigation = [
+const baseNavigation = [
     { name: 'Dashboard', href: '/admin', icon: Home },
     { name: 'Mailbox', href: '/my-inbox', icon: Mail },
     { name: 'Add Bus', href: '/admin/add-bus', icon: Bus },
@@ -33,6 +34,7 @@ const navigation = [
 
 export default function AdminSidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
     const pathname = usePathname();
+    const { adminRole } = useAuth();
     const [settings, setSettings] = useState<Settings | null>(null);
   
     useEffect(() => {
@@ -51,6 +53,12 @@ export default function AdminSidebar({ sidebarOpen, setSidebarOpen }: SidebarPro
       };
       fetchSettings();
     }, []);
+
+    // Build navigation - exclude file manager for viewers
+    const navigation = [
+      ...baseNavigation,
+      ...(adminRole !== 'viewer' ? [{ name: 'File Manager', href: '/admin/file-manager', icon: FolderTree }] : [])
+    ];
     
   
     if (!settings) {

@@ -6,6 +6,7 @@ import { Star, Smile } from "lucide-react"
 import Link from 'next/link';
 import { Button } from "./ui/button"
 import { useEffect, useState } from "react"
+import { motion, type Variants, easeOut } from "framer-motion";
 
 interface Page {
   id: string
@@ -97,84 +98,157 @@ export default function HeroSection() {
     return <div className="p-12 text-center text-red-500">Nothing to see here.</div>
   }
 
+  // Animation Variants
+  const textVariants: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.7, ease: easeOut },
+    },
+  };
+
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: 0.3 + i * 0.2,
+        duration: 0.6,
+        ease: easeOut,
+      },
+    }),
+  };
+
+  const metricsVariants: Variants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: (i: number) => ({
+      opacity: 1,
+      scale: 1,
+      transition: {
+        delay: 0.7 + i * 0.15,
+        duration: 0.5,
+        ease: easeOut,
+      },
+    }),
+  };
+
   return (
-<section className="relative bg-gradient-to-r from-gray-100 to-red-200 dark:from-gray-400 dark:to-red-300 py-20">
-  <div className="container mx-auto px-6 lg:px-12">
-    <div className="flex flex-col lg:flex-row items-start justify-between gap-12">
-      {/* Text Content */}
-      <div className="max-w-2xl flex-1">
-        <h1 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900">
-          {page.hero_big_black}{" "}
-          <span className="text-primary underline decoration-primary dark:text-primary-light dark:decoration-primary-light">
-            {page.hero_big_primary}
-          </span>
-        </h1>
-        <p className="mt-6 text-lg text-gray-600 dark:text-gray-700">
-          {page.hero_text}
-        </p>
-      <div className="flex flex-col sm:flex-row gap-4 mb-3 mt-8">
-        <Link href="/services">
-          <Button size="lg" className="bg-gradient-to-r from-gray-600 to-primary-light text-gray-200 hover:from-primary-dark hover:to-primary-dark transform transition duration-300 ease-in-out hover:scale-105">
-            {page.hero_primary_button}
-          </Button>
-        </Link>
-        <Link href="/contact">
-          <Button variant="ghost" size="lg" className="border-2 border-primary text-primary hover:bg-primary-dark hover:text-gray-200 dark:hover:text-gray-200 dark:border-primary-light dark:text-primary-light dark:hover:bg-primary-light hover:border-none transform transition duration-300 ease-in-out hover:scale-105">
-            {page.hero_secondary_button}
-          </Button>
-        </Link>
-      </div> 
-      </div>
+<section className="relative min-h-[600px] flex items-center bg-cover bg-center bg-no-repeat"
+  style={{ 
+    backgroundImage: `url('/uploads/banner.jpg')` 
+  }}
+>
+  {/* Dark Overlay */}
+  <div className="absolute inset-0 bg-black/40 dark:bg-black/30"></div>
 
-      {/* Cards Row */}
-      <div className="flex flex-col md:flex-row gap-6 flex-1 justify-center lg:justify-end">
-        {/* Investment Success Card */}
-        <Card className="w-64 shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="w-5 h-5 text-primary dark:text-primary-light" />
-              <h3 className="font-semibold">{page.text}</h3>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-primary dark:text-primary-light font-semibold">{page.body_second_text}</span>
-              <span className="text-gray-500 dark:text-gray-200">{page.team_img}</span>
-            </div>
-            <Progress value={80} className="mt-3" />
-          </CardContent>
-        </Card>
+      <div className="container relative z-10 mx-auto px-6 lg:px-12">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-12">
+          {/* Text Content */}
+          <motion.div
+            className="max-w-2xl flex-1"
+            initial="hidden"
+            animate="visible"
+            variants={textVariants}
+          >
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900">
+              {page.hero_big_black}{" "}
+              <span className="text-primary underline decoration-primary dark:text-primary-light dark:decoration-primary-light">
+                {page.hero_big_primary}
+              </span>
+            </h1>
+            <p className="mt-6 text-lg text-gray-100 dark:text-gray bg-black/30 p-4 rounded-md">
+              {page.hero_text}
+            </p>
 
-        {/* Customer Satisfaction Card */}
-        <Card className="w-64 shadow-md">
-          <CardContent className="p-6 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <Smile className="w-6 h-6 text-primary dark:text-primary-light" />
-              <h3 className="font-semibold">{page.team_text}</h3>
-              <p className="text-3xl font-bold text-primary dark:text-primary-light">{page.team_role}</p>
+            <div className="flex flex-col sm:flex-row gap-4 mt-8">
+              <Link href="/services">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-gray-600 to-primary-light text-gray-200 hover:from-primary-dark hover:to-primary-dark transform transition duration-300 ease-in-out hover:scale-105"
+                >
+                  {page.hero_primary_button}
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="border-2 border-primary text-primary hover:bg-primary-dark hover:text-gray-200 dark:hover:text-gray-200 dark:border-primary-light dark:text-primary-light dark:hover:bg-primary-light hover:border-none transform transition duration-300 ease-in-out hover:scale-105"
+                >
+                  {page.hero_secondary_button}
+                </Button>
+              </Link>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </motion.div>
 
-    {/* Metrics Row */}
-    <div className="mt-14 flex gap-12 text-primary dark:text-primary-light font-bold text-2xl">
-      <div className="text-center">{page.hero_year}<br />
-          <span className="text-gray-600 underline decoration-primary text-xs">
-            {page.hero_year_span}
-          </span>
+          {/* Cards Row */}
+          <div className="flex flex-col md:flex-row gap-6 flex-1 justify-center lg:justify-end">
+            {/* Investment Success Card */}
+            <motion.div
+              custom={0}
+              initial="hidden"
+              animate="visible"
+              variants={cardVariants}
+            >
+              <Card className="w-64 shadow-lg backdrop-blur-sm border-0 bg-black/30 dark:bg-black/50">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-5 h-5 text-primary dark:text-primary-light" />
+                    <h3 className="font-semibold text-gray-200">{page.text}</h3>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-primary dark:text-primary-light font-semibold">{page.body_second_text}</span>
+                    <span className="text-gray-300 dark:text-gray-200">{page.team_img}</span>
+                  </div>
+                  <Progress value={80} className="mt-3 h-2" />
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Customer Satisfaction Card */}
+            <motion.div
+              custom={1}
+              initial="hidden"
+              animate="visible"
+              variants={cardVariants}
+            >
+              <Card className="w-64 shadow-lg backdrop-blur-sm border-0 bg-black/30 dark:bg-black/50">
+                <CardContent className="p-6 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Smile className="w-6 h-6 text-primary dark:text-primary-light" />
+                    <h3 className="font-semibold text-gray-200">{page.team_text}</h3>
+                    <p className="text-3xl font-bold text-primary dark:text-primary-light">{page.team_role}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Metrics Row */}
+        <motion.div
+          className="mt-14 flex flex-wrap gap-8 md:gap-12 justify-center lg:justify-start text-primary dark:text-primary-light font-bold text-2xl"
+          initial="hidden"
+          animate="visible"
+        >
+          {[page.hero_year, page.hero_100, page.hero_24].map((value, i) => (
+            <motion.div
+              key={i}
+              custom={i}
+              variants={metricsVariants}
+              className="text-center min-w-[100px] bg-black/50 p-6 rounded-md"
+            >
+              {value}
+              <br />
+              <span className="text-gray-300 underline decoration-primary text-xs">
+                {[page.hero_year_span, page.hero_100_span, page.hero_24_span][i]}
+              </span>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
-      <div className="text-center">{page.hero_100} <br/>
-          <span className="text-gray-600 underline decoration-primary text-xs">
-              {page.hero_100_span}
-          </span>
-      </div>
-      <div className="text-center">{page.hero_24} <br/>
-          <span className="text-gray-600 underline decoration-primary text-xs">
-              {page.hero_24_span}
-          </span>
-      </div>     
-    </div>
-  </div>
 </section>
 
   )

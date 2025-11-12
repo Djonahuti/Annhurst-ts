@@ -256,7 +256,7 @@ export default function AboutPage() {
             </motion.div>
           </div>
         </div>
-      </AnimatedSection>
+      </AnimatedSection> 
 
       {/* Values */}
       <AnimatedSection>

@@ -1,6 +1,7 @@
 "use client"
-import { Bus, Target, Eye, Users, Award, Globe } from 'lucide-react'
+import { Target, Eye, Users, Award, Globe } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { motion, type Variants, easeOut } from "framer-motion";
 
 interface Page {
   id: string
@@ -83,19 +84,46 @@ export default function AboutPage() {
     return <div className="p-12 text-center text-red-500">About page not found.</div>
   }
 
+  // Animation Variants
+  const textVariants: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+         duration: 0.7,
+         delay: i * 0.3, 
+         ease: easeOut 
+      },
+    }),
+  };  
+
   return (
     <div className='playfair-display'>
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-gray-100 to-red-200 dark:from-gray-400 dark:to-red-300">
+      <div
+       className="relative bg-cover bg-center bg-fixed bg-no-repeat min-h-[400px] flex items-center justify-center"
+       style={{
+        backgroundImage: `url('/uploads/buses.jpg')`
+       }}
+      >
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/40 dark:bg-black/30"></div>
+
         <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+          <motion.div
+           className="text-center bg-black/50 dark:bg-gray-900/50 p-8 rounded-lg"
+           initial="hidden"
+           animate="visible"
+           variants={textVariants}
+          >
+            <h1 className="text-4xl font-bold tracking-tight text-gray-200 sm:text-6xl">
               {page.hero_big_black} <span className='text-primary dark:text-primary-light'>{page.hero_big_primary}</span>
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-700 max-w-3xl mx-auto">
+            <p className="mt-6 text-lg leading-8 text-gray-300 dark:text-gray-200 max-w-3xl mx-auto">
               {page.hero_text}
             </p>
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -112,10 +140,13 @@ export default function AboutPage() {
                 <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">{page.body_second_text}</p>
               </div>
               <div className="relative">
-                <div className="aspect-[4/3] rounded-2xl bg-gray-900/5 dark:bg-gray-300/5 object-cover">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-text-primary/20 to-blue-800/20"></div>
+                <div
+                 className="aspect-[4/3] rounded-2xl flex items-center bg-cover bg-center bg-no-repeat"
+                 style={{
+                  backgroundImage: `url('/uploads/ab.png')`,
+                 }}
+                >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Bus className="w-32 h-32 text-primary dark:text-primary-light" />
                   </div>
                 </div>
               </div>

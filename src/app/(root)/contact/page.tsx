@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
+import { motion, Variants, easeOut, useAnimation } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
 
 interface Page {
   id: string
@@ -87,6 +89,22 @@ const contactSchema = z.object({
 
 type ContactFormData = z.infer<typeof contactSchema>
 
+// Reusable In-View Animation Wrapper
+const AnimatedSection = ({ children }: { children: React.ReactNode }) => {
+  const controls = useAnimation();
+  const [ref, inView] = useInView({ threshold: 0.2, triggerOnce: true });
+
+  useEffect(() => {
+    if (inView) controls.start("visible");
+  }, [controls, inView]);
+
+  return (
+    <motion.div ref={ref} initial="hidden" animate={controls}>
+      {children}
+    </motion.div>
+  );
+};
+
 export default function ContactPage() {
   const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(true)
@@ -158,20 +176,65 @@ export default function ContactPage() {
     return <div className="p-12 text-center text-red-500">Nothing to see here.</div>
   }
 
+  // === Animation Variants ===
+  const heroVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 1.2, ease: easeOut } },
+  };
+
+  const textSlideUp: Variants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: easeOut } },
+  };
+
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.15, duration: 0.6, ease: easeOut },
+    }),
+  };
+
+  const faqVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.1, duration: 0.5 },
+    }),
+  };
+
+
   return (
     <div className="playfair-display">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-gray-100 to-red-200 dark:from-gray-400 dark:to-red-300">
-        <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            {page.hero_big_black} <span className='text-primary dark:text-primary-light'>{page.hero_big_primary}</span>
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-700 max-w-3xl mx-auto">
+      <motion.div
+        className="relative bg-cover bg-center bg-fixed bg-no-repeat min-h-[500px] flex items-center justify-center"
+        style={{ backgroundImage: `url('/uploads/contact.jpg')` }}
+        initial="hidden"
+        animate="visible"
+        variants={heroVariants}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-transparent"></div>
+
+        <motion.div
+          className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 text-center text-white"
+          variants={textSlideUp}
+        >
+          <h1 className="text-5xl md:text-7xl font-bold drop-shadow-lg">
+            {page.hero_big_black}{" "}
+            <span className="text-primary dark:text-primary-light">{page.hero_big_primary}</span>
+          </h1>
+          <p className="mt-6 text-xl leading-8 max-w-3xl mx-auto drop-shadow">
             {page.hero_text}
-            </p>
-          </div>
-          <div className='mt-8 flex justify-center'>
+          </p>
+          <motion.div
+            className="mt-10 flex justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
             <Link href="/login">
               <Button
                 variant="ghost"
@@ -181,19 +244,25 @@ export default function ContactPage() {
                 {page.hero_year}
               </Button>
             </Link>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
 
       {/* Contact Form & Info */}
-      <div className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            {/* Contact Form */}
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300 mb-8">
-              {page.body_heading}
-              </h2>
+      <AnimatedSection>
+        <div className="py-24 sm:py-32 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+              {/* Contact Form */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <h2 className="text-3xl md:text-4xl font-bold text-primary dark:text-primary-light mb-8">
+                  {page.body_heading}
+                </h2>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
@@ -308,185 +377,213 @@ export default function ContactPage() {
                   {isSubmitting ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>
-            </div>
+              </motion.div>
 
-            {/* Contact Information */}
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300 mb-8">
-              {page.body_heading2}
-              </h2>
-              <div className="space-y-8">
-                <div className="flex items-start space-x-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-primary-light">
-                    <Phone className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300">Phone</h3>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                      <a href="tel:+2341234567890" className="hover:text-primary">
-                      {page.hero_year_span}
-                      </a>
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      <a href="tel:+2349876543210" className="hover:text-primary">
-                      {page.hero_100}
-                      </a>
-                    </p>
-                  </div>
+              {/* Contact Information */}
+              <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <h2 className="text-3xl md:text-4xl font-bold text-primary dark:text-primary-light mb-8">
+                  {page.body_heading2}
+                </h2>
+                <div className="space-y-8">
+                  {[
+                    {
+                      icon: Phone,
+                      title: "Phone",
+                      content: (
+                        <>
+                          <a href={`tel:${page.hero_year_span}`} className="hover:text-primary">
+                            {page.hero_year_span}
+                          </a>
+                          <br />
+                          <a href={`tel:${page.hero_100}`} className="hover:text-primary">
+                            {page.hero_100}
+                          </a>
+                        </>
+                      ),
+                    },
+                    {
+                      icon: Mail,
+                      title: "Email",
+                      content: (
+                        <>
+                          <a href={`mailto:${page.hero_100_span}`} className="hover:text-primary">
+                            {page.hero_100_span}
+                          </a>
+                          <br />
+                          <a href={`mailto:${page.hero_24_span}`} className="hover:text-primary">
+                            {page.hero_24_span}
+                          </a>
+                        </>
+                      ),
+                    },
+                    {
+                      icon: MapPin,
+                      title: "Office Address",
+                      content: (
+                        <>
+                          {page.box_text8}
+                          <br />
+                          {page.box_head8}
+                          <br />
+                          {page.box_text9}
+                        </>
+                      ),
+                    },
+                    {
+                      icon: Clock,
+                      title: "Business Hours",
+                      content: (
+                        <>
+                          {page.box_head6}
+                          <br />
+                          {page.box_text7}
+                          <br />
+                          {page.box_head7}
+                        </>
+                      ),
+                    },
+                  ].map((item, i) => (
+                    <motion.div
+                      key={i}
+                      custom={i}
+                      variants={cardVariants}
+                      whileHover={{ scale: 1.03 }}
+                      className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-all"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-primary-light">
+                        <item.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300">{item.title}</h3>
+                        <p className="mt-2 text-gray-600 dark:text-gray-400">{item.content}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-primary-light">
-                    <Mail className="h-6 w-6 text-white" />
+                {/* Quick Contact */}
+                <motion.div
+                  className="mt-12 p-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-lg"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-4">
+                    {page.box_head5}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">{page.box_text5}</p>
+                  <div className="flex gap-4">
+                    <Button className="flex-1 bg-gradient-to-r from-gray-600 to-primary-light text-white hover:from-primary-dark hover:to-primary transform hover:scale-105 transition">
+                      <Phone className="h-4 w-4 mr-2" />
+                      {page.hero_primary_button}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="flex-1 border-2 border-primary text-primary hover:bg-primary hover:text-white transform hover:scale-105 transition"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      {page.hero_secondary_button}
+                    </Button>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300">Email</h3>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                      <a href="mailto:info@annhurstglobal.com" className="hover:text-primary">
-                      {page.hero_100_span}
-                      </a>
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      <a href="mailto:sales@annhurstglobal.com" className="hover:text-primary">
-                      {page.hero_24_span}
-                      </a>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-primary-light">
-                    <MapPin className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300">Office Address</h3>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                    {page.box_text8}<br />
-                    {page.box_head8}<br />
-                    {page.box_text9}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-primary-light">
-                    <Clock className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300">Business Hours</h3>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                    {page.box_head6}<br />
-                    {page.box_text7}<br />
-                    {page.box_head7}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Contact */}
-              <div className="mt-12 p-6 bg-gray-50 dark:bg-gray-300/5 rounded-2xl">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-4">
-                {page.box_head5}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {page.box_text5}
-                </p>
-                <div className="flex space-x-4">
-                  <Button className="flex-1 bg-primary text-gray-200 hover:bg-primary-dark">
-                    <Phone className="h-4 w-4 mr-2" />
-                    {page.hero_primary_button}
-                  </Button>
-                  <Button variant="ghost" className="border-2 flex-1 border-primary text-primary hover:bg-primary-dark hover:text-gray-200">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {page.hero_secondary_button}
-                  </Button>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             </div>
           </div>
         </div>
-      </div>
+      </AnimatedSection>
 
       {/* Map Section */}
-      <div className="bg-gray-50 dark:bg-gray-900 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center mb-16">
-            <h2 className="text-base font-semibold leading-7 text-primary dark:text-primary-light">{page.body_sub_heading3}</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300 sm:text-4xl">
-            {page.body_heading3}
-            </p>
-            <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">
-            {page.text}
-            </p>
-          </div>
-          
-          {/* Placeholder for map */}
-          <div className="aspect-[16/9] rounded-2xl overflow-hidden shadow-lg">
-            <iframe
-              title="AnnHurst Global Office Location"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15858.389721507043!2d3.437834379081!3d6.4457033684787985!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf4f9137e9329%3A0xfcc2ef66eb8f604b!2s13B%20Obafemi%20Anibaba%20St%2C%20Island%2C%20Lagos%20105102%2C%20Lagos!5e0!3m2!1sen!2sng!4v1756320380727!5m2!1sen!2sng"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen={true}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
+      <AnimatedSection>
+        <div className="bg-gray-50 dark:bg-gray-900 py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <motion.div
+              className="mx-auto max-w-2xl lg:text-center mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-base font-semibold text-primary dark:text-primary-light">
+                {page.body_sub_heading3}
+              </h2>
+              <p className="mt-2 text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-300">
+                {page.body_heading3}
+              </p>
+              <p className="mt-6 text-lg text-gray-600 dark:text-gray-400">{page.text}</p>
+            </motion.div>
+
+            <motion.div
+              className="aspect-[16/9] rounded-2xl overflow-hidden shadow-2xl"
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8 }}
+            >
+              <iframe
+                title="AnnHurst Global Office Location"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15858.389721507043!2d3.437834379081!3d6.4457033684787985!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf4f9137e9329%3A0xfcc2ef66eb8f604b!2s13B%20Obafemi%20Anibaba%20St%2C%20Island%2C%20Lagos%20105102%2C%20Lagos!5e0!3m2!1sen!2sng!4v1756320380727!5m2!1sen!2sng"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen={true}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </AnimatedSection>
 
       {/* FAQ Section */}
-      <div className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center mb-16">
-            <h2 className="text-base font-semibold leading-7 text-primary dark:text-primary-light">{page.body_sub_heading4}</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-300 sm:text-4xl">
-            {page.body_heading4}
-            </p>
-          </div>
-          
-          <div className="mx-auto max-w-4xl">
-            <div className="space-y-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-3">
-                {page.box_head}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                {page.box_text}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-3">
-                {page.box_head2}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                {page.box_text2}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-3">
-                {page.box_head3}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                {page.box_text3}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-3">
-                {page.box_head4}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                {page.box_text4}
-                </p>
-              </div>
-            </div>
+      <AnimatedSection>
+        <div className="py-24 sm:py-32 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <motion.div
+              className="mx-auto max-w-2xl lg:text-center mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-base font-semibold text-primary dark:text-primary-light">
+                {page.body_sub_heading4}
+              </h2>
+              <p className="mt-2 text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-300">
+                {page.body_heading4}
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="mx-auto max-w-4xl space-y-8"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              {[
+                { question: page.box_head, answer: page.box_text },
+                { question: page.box_head2, answer: page.box_text2 },
+                { question: page.box_head3, answer: page.box_text3 },
+                { question: page.box_head4, answer: page.box_text4 },
+              ].map((faq, i) => (
+                <motion.div
+                  key={i}
+                  custom={i}
+                  variants={faqVariants}
+                  whileHover={{ scale: 1.02 }}
+                  className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg transition-all"
+                >
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-300 mb-3">
+                    {faq.question}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">{faq.answer}</p>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </div>
-      </div>
+      </AnimatedSection>
     </div>
   )
 } 

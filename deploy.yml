@@ -1,0 +1,86 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - master  # Change to 'main' if your default branch is 'main'
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Write private key (preserve newlines)
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Add server to known hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 644 ~/.ssh/known_hosts
+      
+      - name: Test SSH Connection
+        run: |
+          echo "🔍 Testing SSH connection..."
+          ssh -i ~/.ssh/id_ed25519 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o ConnectTimeout=10 \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
+            "echo 'SSH connection successful!' && whoami && pwd"
+      
+      - name: Deploy to server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o ConnectTimeout=10 \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e  # Exit on error
+            
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to project directory
+            cd ~/apps/Annhurst-ts
+            
+            # Pull latest changes
+            echo "📥 Pulling latest changes..."
+            git pull origin master || git pull origin main
+            
+            # Install dependencies (only if package files changed)
+            echo "📦 Installing dependencies..."
+            npm install
+            
+            # Generate Prisma client (if schema changed)
+            echo "🔧 Generating Prisma client..."
+            npx prisma generate || true
+            
+            # Run data migration if SQL file exists (optional)
+            if [ -f "cpanel_db.sql" ]; then
+              echo "📊 Running data migration..."
+              node migrate-data.js || echo "⚠️ Migration skipped or failed (non-critical)"
+            else
+              echo "ℹ️ No cpanel_db.sql found, skipping data migration"
+            fi
+            
+            # Build the project
+            echo "🏗️ Building project..."
+            npm run build
+            
+            # Restart PM2 process
+            echo "🔄 Restarting application..."
+            pm2 restart nextjs || pm2 start npm --name "nextjs" -- start
+            
+            echo "✅ Deployment completed successfully!"
+          EOF
+      
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_ed25519

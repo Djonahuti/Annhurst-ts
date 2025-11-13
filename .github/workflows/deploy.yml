@@ -49,18 +49,13 @@ jobs:
             # Navigate to project directory
             cd ~/apps/Annhurst-ts
             
-            # Fetch latest changes
-            echo "📥 Fetching latest code..."
-            echo "Fetching latest code..."
-            git fetch origin
-
-            echo "Hard resetting to origin/master..."
-            git reset --hard origin/master
-            git clean -fd
+            # Pull latest changes
+            echo "📥 Pulling latest changes..."
+            git pull origin master || git pull origin main
             
             # Install dependencies (only if package files changed)
             echo "📦 Installing dependencies..."
-            npm ci --production  # Clean install for production
+            npm install
             
             # Generate Prisma client (if schema changed)
             echo "🔧 Generating Prisma client..."
@@ -89,4 +84,3 @@ jobs:
         if: always()
         run: |
           rm -f ~/.ssh/id_ed25519
- 
